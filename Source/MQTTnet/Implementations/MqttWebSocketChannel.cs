@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Linq;
 using System.Net;
+using System.Net.Security;
 using System.Net.WebSockets;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
@@ -79,6 +81,13 @@ namespace MQTTnet.Implementations
                 clientWebSocket.Options.Cookies = _options.CookieContainer;
             }
 
+#if NETSTANDARD2_1
+            if (_options.TlsOptions?.UseTls == true)
+            {
+                clientWebSocket.Options.RemoteCertificateValidationCallback = InternalUserCertificateValidationCallback;
+            }
+#endif
+
             if (_options.TlsOptions?.UseTls == true && _options.TlsOptions?.Certificates != null)
             {
                 clientWebSocket.Options.ClientCertificates = new X509CertificateCollection();
@@ -92,6 +101,37 @@ namespace MQTTnet.Implementations
             _webSocket = clientWebSocket;
 
             IsSecureConnection = uri.StartsWith("wss://", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool InternalUserCertificateValidationCallback(object sender, X509Certificate x509Certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        {
+            if (_options.TlsOptions.CertificateValidationCallback != null)
+            {
+                return _options.TlsOptions.CertificateValidationCallback(x509Certificate, chain, sslPolicyErrors, null);
+            }
+
+            if (sslPolicyErrors == SslPolicyErrors.None)
+            {
+                return true;
+            }
+
+            if (chain.ChainStatus.Any(c => c.Status == X509ChainStatusFlags.RevocationStatusUnknown || c.Status == X509ChainStatusFlags.Revoked || c.Status == X509ChainStatusFlags.OfflineRevocation))
+            {
+                if (!_options.TlsOptions.IgnoreCertificateRevocationErrors)
+                {
+                    return false;
+                }
+            }
+
+            if (chain.ChainStatus.Any(c => c.Status == X509ChainStatusFlags.PartialChain))
+            {
+                if (!_options.TlsOptions.IgnoreCertificateChainErrors)
+                {
+                    return false;
+                }
+            }
+
+            return _options.TlsOptions.AllowUntrustedCertificates;
         }
 
         public async Task DisconnectAsync(CancellationToken cancellationToken)
