@@ -1,24 +1,24 @@
 #if !WINDOWS_UWP
-using System;
-using System.Net.Security;
-using System.Net.Sockets;
-using System.Security.Cryptography.X509Certificates;
-using System.Threading.Tasks;
-using System.IO;
-using System.Linq;
-using System.Runtime.ExceptionServices;
-using System.Threading;
 using MQTTnet.Channel;
 using MQTTnet.Client.Options;
+using System;
+using System.IO;
+using System.Linq;
+using System.Net.Security;
+using System.Net.Sockets;
+using System.Runtime.ExceptionServices;
+using System.Security.Cryptography.X509Certificates;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MQTTnet.Implementations
 {
-    public class MqttTcpChannel : IMqttChannel
+    public sealed class MqttTcpChannel : IDisposable, IMqttChannel
     {
-        private readonly IMqttClientOptions _clientOptions;
-        private readonly MqttClientTcpOptions _options;
+        readonly IMqttClientOptions _clientOptions;
+        readonly MqttClientTcpOptions _options;
 
-        private Stream _stream;
+        Stream _stream;
 
         public MqttTcpChannel(IMqttClientOptions clientOptions)
         {
@@ -46,15 +46,15 @@ namespace MQTTnet.Implementations
 
         public async Task ConnectAsync(CancellationToken cancellationToken)
         {
-            Socket socket;
+            CrossPlatformSocket socket;
 
             if (_options.AddressFamily == AddressFamily.Unspecified)
             {
-                socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                socket = new CrossPlatformSocket();
             }
             else
             {
-                socket = new Socket(_options.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                socket = new CrossPlatformSocket(_options.AddressFamily);
             }
 
             socket.ReceiveBufferSize = _options.BufferSize;
@@ -68,25 +68,25 @@ namespace MQTTnet.Implementations
                 // of the actual value.
                 socket.DualMode = _options.DualMode.Value;
             }
-            
-            // Workaround for: workaround for https://github.com/dotnet/corefx/issues/24430
-            using (cancellationToken.Register(() => socket.Dispose()))
-            {
-#if NET452 || NET461
-                await Task.Factory.FromAsync(socket.BeginConnect, socket.EndConnect, _options.Server, _options.GetPort(), null).ConfigureAwait(false);
-#else
-                await socket.ConnectAsync(_options.Server, _options.GetPort()).ConfigureAwait(false);
-#endif
-            }
 
-            var networkStream = new NetworkStream(socket, true);
+            await socket.ConnectAsync(_options.Server, _options.GetPort(), cancellationToken).ConfigureAwait(false);
+
+            var networkStream = socket.GetStream();
 
             if (_options.TlsOptions.UseTls)
             {
                 var sslStream = new SslStream(networkStream, false, InternalUserCertificateValidationCallback);
-                _stream = sslStream;
+                try
+                {
+                    await sslStream.AuthenticateAsClientAsync(_options.Server, LoadCertificates(), _options.TlsOptions.SslProtocol, !_options.TlsOptions.IgnoreCertificateRevocationErrors).ConfigureAwait(false);
+                }
+                catch
+                {
+                    sslStream.Dispose();
+                    throw;
+                }
 
-                await sslStream.AuthenticateAsClientAsync(_options.Server, LoadCertificates(), _options.TlsOptions.SslProtocol, !_options.TlsOptions.IgnoreCertificateRevocationErrors).ConfigureAwait(false);                
+                _stream = sslStream;
             }
             else
             {
@@ -104,18 +104,21 @@ namespace MQTTnet.Implementations
 
         public async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
+            if (buffer is null) throw new ArgumentNullException(nameof(buffer));
+
             try
             {
                 // Workaround for: https://github.com/dotnet/corefx/issues/24430
                 using (cancellationToken.Register(Dispose))
                 {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        return 0;
-                    }
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     return await _stream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
                 }
+            }
+            catch (ObjectDisposedException)
+            {
+                return -1;
             }
             catch (IOException exception)
             {
@@ -130,18 +133,21 @@ namespace MQTTnet.Implementations
 
         public async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
+            if (buffer is null) throw new ArgumentNullException(nameof(buffer));
+
             try
             {
                 // Workaround for: https://github.com/dotnet/corefx/issues/24430
                 using (cancellationToken.Register(Dispose))
                 {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        return;
-                    }
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     await _stream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
                 }
+            }
+            catch (ObjectDisposedException)
+            {
+                return;
             }
             catch (IOException exception)
             {
@@ -173,7 +179,7 @@ namespace MQTTnet.Implementations
             _stream = null;
         }
 
-        private bool InternalUserCertificateValidationCallback(object sender, X509Certificate x509Certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        bool InternalUserCertificateValidationCallback(object sender, X509Certificate x509Certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
         {
             if (_options.TlsOptions.CertificateValidationCallback != null)
             {
@@ -204,7 +210,7 @@ namespace MQTTnet.Implementations
             return _options.TlsOptions.AllowUntrustedCertificates;
         }
 
-        private X509CertificateCollection LoadCertificates()
+        X509CertificateCollection LoadCertificates()
         {
             var certificates = new X509CertificateCollection();
             if (_options.TlsOptions.Certificates == null)
@@ -214,7 +220,7 @@ namespace MQTTnet.Implementations
 
             foreach (var certificate in _options.TlsOptions.Certificates)
             {
-                certificates.Add(new X509Certificate2(certificate));
+                certificates.Add(certificate);
             }
 
             return certificates;

@@ -1,28 +1,29 @@
-﻿using System;
+﻿using MQTTnet.Adapter;
+using MQTTnet.Client.Publishing;
+using MQTTnet.Client.Receiving;
+using MQTTnet.Diagnostics;
+using MQTTnet.Exceptions;
+using MQTTnet.Protocol;
+using MQTTnet.Server.Status;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using MQTTnet.Adapter;
-using MQTTnet.Client.Publishing;
-using MQTTnet.Client.Receiving;
-using MQTTnet.Diagnostics;
-using MQTTnet.Protocol;
-using MQTTnet.Server.Status;
 
 namespace MQTTnet.Server
 {
     public class MqttServer : IMqttServer
     {
-        private readonly MqttServerEventDispatcher _eventDispatcher;
-        private readonly ICollection<IMqttServerAdapter> _adapters;
-        private readonly IMqttNetChildLogger _logger;
+        readonly MqttServerEventDispatcher _eventDispatcher;
+        readonly ICollection<IMqttServerAdapter> _adapters;
+        readonly IMqttNetLogger _logger;
 
-        private MqttClientSessionsManager _clientSessionsManager;
-        private MqttRetainedMessagesManager _retainedMessagesManager;
-        private CancellationTokenSource _cancellationTokenSource;
+        MqttClientSessionsManager _clientSessionsManager;
+        IMqttRetainedMessagesManager _retainedMessagesManager;
+        CancellationTokenSource _cancellationTokenSource;
 
-        public MqttServer(IEnumerable<IMqttServerAdapter> adapters, IMqttNetChildLogger logger)
+        public MqttServer(IEnumerable<IMqttServerAdapter> adapters, IMqttNetLogger logger)
         {
             if (adapters == null) throw new ArgumentNullException(nameof(adapters));
             _adapters = adapters.ToList();
@@ -32,6 +33,8 @@ namespace MQTTnet.Server
 
             _eventDispatcher = new MqttServerEventDispatcher(logger.CreateChildLogger(nameof(MqttServerEventDispatcher)));
         }
+
+        public bool IsStarted => _cancellationTokenSource != null;
 
         public IMqttServerStartedHandler StartedHandler { get; set; }
 
@@ -48,7 +51,7 @@ namespace MQTTnet.Server
             get => _eventDispatcher.ClientDisconnectedHandler;
             set => _eventDispatcher.ClientDisconnectedHandler = value;
         }
-        
+
         public IMqttServerClientSubscribedTopicHandler ClientSubscribedTopicHandler
         {
             get => _eventDispatcher.ClientSubscribedTopicHandler;
@@ -60,7 +63,7 @@ namespace MQTTnet.Server
             get => _eventDispatcher.ClientUnsubscribedTopicHandler;
             set => _eventDispatcher.ClientUnsubscribedTopicHandler = value;
         }
-        
+
         public IMqttApplicationMessageReceivedHandler ApplicationMessageReceivedHandler
         {
             get => _eventDispatcher.ApplicationMessageReceivedHandler;
@@ -117,11 +120,14 @@ namespace MQTTnet.Server
         {
             Options = options ?? throw new ArgumentNullException(nameof(options));
 
+            if (Options.RetainedMessagesManager == null) throw new MqttConfigurationException("options.RetainedMessagesManager should not be null.");
+
             if (_cancellationTokenSource != null) throw new InvalidOperationException("The server is already started.");
 
             _cancellationTokenSource = new CancellationTokenSource();
 
-            _retainedMessagesManager = new MqttRetainedMessagesManager(Options, _logger);
+            _retainedMessagesManager = Options.RetainedMessagesManager;
+            await _retainedMessagesManager.Start(Options, _logger);
             await _retainedMessagesManager.LoadMessagesAsync().ConfigureAwait(false);
 
             _clientSessionsManager = new MqttClientSessionsManager(Options, _retainedMessagesManager, _cancellationTokenSource.Token, _eventDispatcher, _logger);
@@ -150,9 +156,9 @@ namespace MQTTnet.Server
                 {
                     return;
                 }
-                
+
                 await _clientSessionsManager.StopAsync().ConfigureAwait(false);
-                
+
                 _cancellationTokenSource.Cancel(false);
 
                 foreach (var adapter in _adapters)
@@ -186,9 +192,9 @@ namespace MQTTnet.Server
             return _retainedMessagesManager?.ClearMessagesAsync();
         }
 
-        private Task OnHandleClient(IMqttChannelAdapter channelAdapter)
+        Task OnHandleClient(IMqttChannelAdapter channelAdapter)
         {
-            return _clientSessionsManager.HandleClientAsync(channelAdapter);
+            return _clientSessionsManager.HandleClientConnectionAsync(channelAdapter);
         }
     }
 }
