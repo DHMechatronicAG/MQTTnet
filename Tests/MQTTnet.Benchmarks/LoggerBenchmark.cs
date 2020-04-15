@@ -1,21 +1,22 @@
 ﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Jobs;
 using MQTTnet.Diagnostics;
 
 namespace MQTTnet.Benchmarks
 {
-    [ClrJob]
+    [SimpleJob(RuntimeMoniker.Net461)]
     [RPlotExporter]
     [MemoryDiagnoser]
     public class LoggerBenchmark
     {
         private IMqttNetLogger _logger;
-        private IMqttNetChildLogger _childLogger;
+        private IMqttNetLogger _childLogger;
         private bool _useHandler;
 
         [GlobalSetup]
         public void Setup()
         {
-            _logger = new MqttNetLogger("1");
+            _logger = new MqttNetLogger();
             _childLogger = _logger.CreateChildLogger("child");
 
             MqttNetGlobalLogger.LogMessagePublished += OnLogMessagePublished;
@@ -25,7 +26,7 @@ namespace MQTTnet.Benchmarks
         {
             if (_useHandler)
             {
-                eventArgs.TraceMessage.ToString();
+                eventArgs.LogMessage.ToString();
             }
         }
 

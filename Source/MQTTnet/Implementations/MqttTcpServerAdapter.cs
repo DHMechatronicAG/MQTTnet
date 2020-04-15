@@ -1,4 +1,8 @@
 ﻿#if !WINDOWS_UWP
+using MQTTnet.Adapter;
+using MQTTnet.Diagnostics;
+using MQTTnet.Internal;
+using MQTTnet.Server;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -6,20 +10,17 @@ using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
-using MQTTnet.Adapter;
-using MQTTnet.Diagnostics;
-using MQTTnet.Server;
 
 namespace MQTTnet.Implementations
 {
-    public class MqttTcpServerAdapter : IMqttServerAdapter
+    public sealed class MqttTcpServerAdapter : Disposable, IMqttServerAdapter
     {
-        private readonly List<MqttTcpServerListener> _listeners = new List<MqttTcpServerListener>();
-        private readonly IMqttNetChildLogger _logger;
+        readonly List<MqttTcpServerListener> _listeners = new List<MqttTcpServerListener>();
+        readonly IMqttNetLogger _logger;
 
-        private CancellationTokenSource _cancellationTokenSource;
+        CancellationTokenSource _cancellationTokenSource;
 
-        public MqttTcpServerAdapter(IMqttNetChildLogger logger)
+        public MqttTcpServerAdapter(IMqttNetLogger logger)
         {
             if (logger == null) throw new ArgumentNullException(nameof(logger));
 
@@ -58,7 +59,7 @@ namespace MQTTnet.Implementations
                 {
                     tlsCertificate = new X509Certificate2(options.TlsEndpointOptions.Certificate, options.TlsEndpointOptions.CertificateCredentials.Password);
                 }
-                
+
                 if (!tlsCertificate.HasPrivateKey)
                 {
                     throw new InvalidOperationException("The certificate for TLS encryption must contain the private key.");
@@ -72,11 +73,21 @@ namespace MQTTnet.Implementations
 
         public Task StopAsync()
         {
-            Dispose();
+            Cleanup();
             return Task.FromResult(0);
         }
 
-        public void Dispose()
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Cleanup();
+            }
+
+            base.Dispose(disposing);
+        }
+
+        void Cleanup()
         {
             _cancellationTokenSource?.Cancel(false);
             _cancellationTokenSource?.Dispose();
@@ -90,7 +101,7 @@ namespace MQTTnet.Implementations
             _listeners.Clear();
         }
 
-        private void RegisterListeners(MqttServerTcpEndpointBaseOptions options, X509Certificate2 tlsCertificate, CancellationToken cancellationToken)
+        void RegisterListeners(MqttServerTcpEndpointBaseOptions options, X509Certificate2 tlsCertificate, CancellationToken cancellationToken)
         {
             if (!options.BoundInterNetworkAddress.Equals(IPAddress.None))
             {
