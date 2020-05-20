@@ -19,7 +19,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <StartupObject></StartupObject>
+    <StartupObject>MQTTnet.Server.Program</StartupObject>
     <UserSecretsId>c564f0de-28b4-45bf-b726-4d665d705653</UserSecretsId>
   </PropertyGroup>
 
@@ -28,13 +28,6 @@
     <WarningsAsErrors>NU1605</WarningsAsErrors>
     <NoWarn>1701;1702</NoWarn>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Remove="wwwroot\**" />
-    <Content Remove="wwwroot\**" />
-    <EmbeddedResource Remove="wwwroot\**" />
-    <None Remove="wwwroot\**" />
-  </ItemGroup>
 
   <ItemGroup>
     <Content Update="appsettings.json">
@@ -47,8 +40,8 @@
     <PackageReference Include="IronPython.StdLib" Version="2.7.10-candidate1" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="3.1.3" />
     <PackageReference Include="MSTest.TestAdapter" Version="2.1.1" />
-    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="5.3.1" />
-    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="5.3.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="5.3.3" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="5.3.3" />
   </ItemGroup>
 
   <ItemGroup>
@@ -72,11 +65,19 @@
     <None Update="Web\authorization_handler.py">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Web\wwwroot\Hello.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Web\wwwroot\mqtt_Test.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Web\wwwroot\pahoJS_Test.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Properties\PublishProfiles\" />
-    <Folder Include="Web\wwwroot\" />
   </ItemGroup>
 
 </Project>

@@ -2,6 +2,8 @@
 using Microsoft.Extensions.Hosting;
 using MQTTnet.Server.Web;
 using System;
+using System.Diagnostics;
+using System.IO;
 using System.Reflection;
 
 namespace MQTTnet.Server
@@ -20,8 +22,8 @@ namespace MQTTnet.Server
                         webBuilder.ConfigureKestrel(serverOptions =>
                         {
                         })
+                        .UseWebRoot(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Web", "wwwroot"))
                         .UseStartup<Startup>();
-
                     }).Build().Run();
 
                 return 0;
@@ -58,8 +60,11 @@ namespace MQTTnet.Server
             Console.WriteLine(@"https://github.com/chkr1011/MQTTnet");
 
             Console.ForegroundColor = ConsoleColor.White;
+
+            var fileVersion = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
+
             Console.WriteLine($@"
-Version:    {Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion}
+Version:    {fileVersion.ProductVersion}
 License:    MIT (read LICENSE file)
 Sponsoring: https://opencollective.com/mqttnet
 Support:    https://github.com/chkr1011/MQTTnet/issues

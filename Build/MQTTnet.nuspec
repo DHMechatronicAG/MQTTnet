@@ -3,35 +3,18 @@
   <metadata>
     <id>MQTTnet</id>
     <version>0.0.0</version>
-    <authors>Christian Kratky</authors>
+    <authors>The contributors of MQTTnet</authors>
     <owners>Christian Kratky</owners>
     <license type="file">LICENSE</license>
     <projectUrl>https://github.com/chkr1011/MQTTnet</projectUrl>
     <iconUrl>https://raw.githubusercontent.com/chkr1011/MQTTnet/master/Images/Logo_128x128.png</iconUrl>
     <icon>images\Logo_128x128.png</icon>
-    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <description>MQTTnet is a high performance .NET library for MQTT based communication. It provides a MQTT client and a MQTT server (broker) and supports v3.1.0, v3.1.1 and v5.0.0 of the MQTT protocol.</description>
     <releaseNotes>
-* [All] Due to a merge issue not all changes are included in 3.0.8. All these changes are now included in this version.
-* [Core] Updated all nuget references.
-* [Core] Added MqttApplicationMessage.GetUserProperty() convenience method (thanks to @PMExtra).
-* [LowLevelMqttClient] Added low level MQTT client in order to provide more flexibility when using the MQTT protocol. This client requires detailed knowledge about the MQTT protocol.
-* [Client] Improve connection stability (thanks to @jltjohanlindqvist).
-* [Client] Support WithConnectionUri to configure client (thanks to @PMExtra).
-* [Client] Support PublishAsync with QoS 1 and QoS 2 from within an ApplicationMessageReceivedHandler (#648, #587, thanks to @PSanetra).
-* [Client] Fixed MqttCommunicationTimedOutExceptions, caused by a long running ApplicationMessageReceivedHandler, which blocked MQTT packets from being processed (#829, thanks to @PSanetra).
-* [ManagedClient] Added builder class for MqttClientUnsubscribeOptions (thanks to @dominikviererbe).
-* [ManagedClient] Added support for persisted sessions (thansk to @PMExtra).
-* [ManagedClient] Fixed a memory leak (thanks to @zawodskoj).
-* [ManagedClient] Improved internal subscription management (#569, thanks to @cstichlberger).
-* [ManagedClient] Refactored log messages (thanks to @cstichlberger).
-* [Server] Added support for assigned client IDs (MQTTv5 only) (thanks to @bcrosnier).
-* [Server] Added interceptor for unsubscriptions.
-* [Server] Removed exceptions when user properties are set with MQTT protocol version 3.1
-* [Server] Added custom session items to the client status.
-* [Server] Added option to check whether the server is already started properly or not.
-* [MQTTnet.AspNetCore] improved compatibility with AspNetCore 3.1
-* [MQTTnet.Server] Added interceptor for unsubscriptions.
+* [Client] Fixed issue in keep alive handling.
+* [MQTTnet.Server] Added support for delivering static files (HTML, JavaScript etc.).
+* [MQTTnet.Server] Fixed web socket protocol errors (when using paho JS etc.).
     </releaseNotes>
     <copyright>Copyright Christian Kratky 2016-2020</copyright>
     <tags>MQTT Message Queue Telemetry Transport MQTTClient MQTTServer Server MQTTBroker Broker NETStandard IoT InternetOfThings Messaging Hardware Arduino Sensor Actuator M2M ESP Smart Home Cities Automation Xamarin</tags> 
@@ -43,6 +26,12 @@
         <dependency id="System.Net.WebSockets.Client" version="4.3.2" />      
       </group>
       <group targetFramework="netstandard2.0">
+        <dependency id="NETStandard.Library" version="2.0.0" />
+        <dependency id="System.Net.Security" version="4.3.2" />
+        <dependency id="System.Net.WebSockets" version="4.3.0" />
+        <dependency id="System.Net.WebSockets.Client" version="4.3.2" />
+      </group>
+      <group targetFramework="netstandard2.1">
         <dependency id="NETStandard.Library" version="2.0.0" />
         <dependency id="System.Net.Security" version="4.3.2" />
         <dependency id="System.Net.WebSockets" version="4.3.0" />
@@ -66,6 +55,9 @@
     
     <!-- .NET Standard 2.0 -->
     <file src="..\Source\MQTTnet\bin\Release\netstandard2.0\MQTTnet.*" target="lib\netstandard2.0\"/>
+
+    <!-- .NET Standard 2.1 -->
+    <file src="..\Source\MQTTnet\bin\Release\netstandard2.1\MQTTnet.*" target="lib\netstandard2.1\"/>
 
     <!-- Universal Windows -->
     <file src="..\Source\MQTTnet\bin\Release\uap10.0\MQTTnet.*" target="lib\uap10.0\"/>

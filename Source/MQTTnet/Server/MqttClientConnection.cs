@@ -28,7 +28,7 @@ namespace MQTTnet.Server
         readonly MqttClientKeepAliveMonitor _keepAliveMonitor;
         readonly MqttClientSessionsManager _sessionsManager;
 
-        readonly IMqttNetLogger _logger;
+        readonly IMqttNetScopedLogger _logger;
         readonly IMqttServerOptions _serverOptions;
 
         readonly IMqttChannelAdapter _channelAdapter;
@@ -71,9 +71,9 @@ namespace MQTTnet.Server
             ConnectPacket = connectPacket ?? throw new ArgumentNullException(nameof(connectPacket));
 
             if (logger == null) throw new ArgumentNullException(nameof(logger));
-            _logger = logger.CreateChildLogger(nameof(MqttClientConnection));
+            _logger = logger.CreateScopedLogger(nameof(MqttClientConnection));
 
-            _keepAliveMonitor = new MqttClientKeepAliveMonitor(ConnectPacket.ClientId, () => StopAsync(), _logger);
+            _keepAliveMonitor = new MqttClientKeepAliveMonitor(ConnectPacket.ClientId, () => StopAsync(), logger);
 
             _connectedTimestamp = DateTime.UtcNow;
             _lastPacketReceivedTimestamp = _connectedTimestamp;
@@ -282,7 +282,7 @@ namespace MQTTnet.Server
             _cancellationToken.Cancel(false);
         }
 
-        async Task EnqueueSubscribedRetainedMessagesAsync(ICollection<TopicFilter> topicFilters)
+        async Task EnqueueSubscribedRetainedMessagesAsync(ICollection<MqttTopicFilter> topicFilters)
         {
             var retainedMessages = await _retainedMessagesManager.GetSubscribedMessagesAsync(topicFilters).ConfigureAwait(false);
             foreach (var applicationMessage in retainedMessages)
@@ -430,14 +430,14 @@ namespace MQTTnet.Server
                     }
                     else if (publishPacket.QualityOfServiceLevel == MqttQualityOfServiceLevel.AtLeastOnce)
                     {
-                        var awaiter = _packetDispatcher.AddPacketAwaiter<MqttPubAckPacket>(publishPacket.PacketIdentifier);
+                        var awaiter = _packetDispatcher.AddAwaiter<MqttPubAckPacket>(publishPacket.PacketIdentifier);
                         await SendAsync(publishPacket).ConfigureAwait(false);
                         await awaiter.WaitOneAsync(_serverOptions.DefaultCommunicationTimeout).ConfigureAwait(false);
                     }
                     else if (publishPacket.QualityOfServiceLevel == MqttQualityOfServiceLevel.ExactlyOnce)
                     {
-                        using (var awaiter1 = _packetDispatcher.AddPacketAwaiter<MqttPubRecPacket>(publishPacket.PacketIdentifier))
-                        using (var awaiter2 = _packetDispatcher.AddPacketAwaiter<MqttPubCompPacket>(publishPacket.PacketIdentifier))
+                        using (var awaiter1 = _packetDispatcher.AddAwaiter<MqttPubRecPacket>(publishPacket.PacketIdentifier))
+                        using (var awaiter2 = _packetDispatcher.AddAwaiter<MqttPubCompPacket>(publishPacket.PacketIdentifier))
                         {
                             await SendAsync(publishPacket).ConfigureAwait(false);
                             await awaiter1.WaitOneAsync(_serverOptions.DefaultCommunicationTimeout).ConfigureAwait(false);
