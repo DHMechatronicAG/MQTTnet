@@ -46,54 +46,68 @@ namespace MQTTnet.Implementations
 
         public async Task ConnectAsync(CancellationToken cancellationToken)
         {
-            CrossPlatformSocket socket;
-
-            if (_options.AddressFamily == AddressFamily.Unspecified)
+            CrossPlatformSocket socket = null;
+            try
             {
-                socket = new CrossPlatformSocket();
-            }
-            else
-            {
-                socket = new CrossPlatformSocket(_options.AddressFamily);
-            }
-
-            socket.ReceiveBufferSize = _options.BufferSize;
-            socket.SendBufferSize = _options.BufferSize;
-            socket.NoDelay = _options.NoDelay;
-
-            if (_options.DualMode.HasValue)
-            {
-                // It is important to avoid setting the flag if no specific value is set by the user
-                // because on IPv4 only networks the setter will always throw an exception. Regardless
-                // of the actual value.
-                socket.DualMode = _options.DualMode.Value;
-            }
-
-            await socket.ConnectAsync(_options.Server, _options.GetPort(), cancellationToken).ConfigureAwait(false);
-
-            var networkStream = socket.GetStream();
-
-            if (_options.TlsOptions.UseTls)
-            {
-                var sslStream = new SslStream(networkStream, false, InternalUserCertificateValidationCallback);
-                try
+                if (_options.AddressFamily == AddressFamily.Unspecified)
                 {
-                    await sslStream.AuthenticateAsClientAsync(_options.Server, LoadCertificates(), _options.TlsOptions.SslProtocol, !_options.TlsOptions.IgnoreCertificateRevocationErrors).ConfigureAwait(false);
+                    socket = new CrossPlatformSocket();
                 }
-                catch
+                else
                 {
-                    sslStream.Dispose();
-                    throw;
+                    socket = new CrossPlatformSocket(_options.AddressFamily);
                 }
 
-                _stream = sslStream;
-            }
-            else
-            {
-                _stream = networkStream;
-            }
+                socket.ReceiveBufferSize = _options.BufferSize;
+                socket.SendBufferSize = _options.BufferSize;
+                socket.NoDelay = _options.NoDelay;
 
-            Endpoint = socket.RemoteEndPoint?.ToString();
+                if (_options.DualMode.HasValue)
+                {
+                    // It is important to avoid setting the flag if no specific value is set by the user
+                    // because on IPv4 only networks the setter will always throw an exception. Regardless
+                    // of the actual value.
+                    socket.DualMode = _options.DualMode.Value;
+                }
+
+                await socket.ConnectAsync(_options.Server, _options.GetPort(), cancellationToken).ConfigureAwait(false);
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var networkStream = socket.GetStream();
+
+                if (_options.TlsOptions?.UseTls == true)
+                {
+                    var sslStream = new SslStream(networkStream, false, InternalUserCertificateValidationCallback);
+                    try
+                    {
+                        await sslStream.AuthenticateAsClientAsync(_options.Server, LoadCertificates(), _options.TlsOptions.SslProtocol, !_options.TlsOptions.IgnoreCertificateRevocationErrors).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+#if NETSTANDARD2_1
+                        await sslStream.DisposeAsync().ConfigureAwait(false);
+#else
+                        sslStream.Dispose();
+#endif
+
+                        throw;
+                    }
+
+                    _stream = sslStream;
+                }
+                else
+                {
+                    _stream = networkStream;
+                }
+
+                Endpoint = socket.RemoteEndPoint?.ToString();
+            }
+            catch (Exception)
+            {
+                socket?.Dispose();
+                throw;
+            }
         }
 
         public Task DisconnectAsync(CancellationToken cancellationToken)
@@ -106,19 +120,20 @@ namespace MQTTnet.Implementations
         {
             if (buffer is null) throw new ArgumentNullException(nameof(buffer));
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             try
             {
                 // Workaround for: https://github.com/dotnet/corefx/issues/24430
                 using (cancellationToken.Register(Dispose))
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-
                     return await _stream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (ObjectDisposedException)
             {
-                return -1;
+                // Indicate a graceful socket close.
+                return 0;
             }
             catch (IOException exception)
             {
@@ -135,13 +150,13 @@ namespace MQTTnet.Implementations
         {
             if (buffer is null) throw new ArgumentNullException(nameof(buffer));
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             try
             {
                 // Workaround for: https://github.com/dotnet/corefx/issues/24430
                 using (cancellationToken.Register(Dispose))
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-
                     await _stream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
                 }
             }
@@ -181,9 +196,30 @@ namespace MQTTnet.Implementations
 
         bool InternalUserCertificateValidationCallback(object sender, X509Certificate x509Certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
         {
-            if (_options.TlsOptions.CertificateValidationCallback != null)
+#region OBSOLETE
+
+#pragma warning disable CS0618 // Type or member is obsolete
+            var certificateValidationCallback = _options?.TlsOptions?.CertificateValidationCallback;
+#pragma warning restore CS0618 // Type or member is obsolete
+            if (certificateValidationCallback != null)
             {
-                return _options.TlsOptions.CertificateValidationCallback(x509Certificate, chain, sslPolicyErrors, _clientOptions);
+                return certificateValidationCallback(x509Certificate, chain, sslPolicyErrors, _clientOptions);
+            }
+
+#endregion
+
+            var certificateValidationHandler = _options?.TlsOptions?.CertificateValidationHandler;
+            if (certificateValidationHandler != null)
+            {
+                var context = new MqttClientCertificateValidationCallbackContext
+                {
+                    Certificate = x509Certificate,
+                    Chain = chain,
+                    SslPolicyErrors = sslPolicyErrors,
+                    ClientOptions = _options
+                };
+
+                return certificateValidationHandler(context);
             }
 
             if (sslPolicyErrors == SslPolicyErrors.None)

@@ -26,7 +26,7 @@ MQTTnet is a high performance .NET library for MQTT based communication. It prov
 * Uniform API across all supported versions of the MQTT protocol
 * Interfaces included for mocking and testing
 * Access to internal trace messages
-* Unit tested (~210 tests)
+* Unit tested (~250 tests)
 * No external dependencies
 
 \* Tested on local machine (Intel i7 8700K) with MQTTnet client and server running in the same process using the TCP channel. The app for verification is part of this repository and stored in _/Tests/MQTTnet.TestApp.NetCore_.
@@ -34,7 +34,7 @@ MQTTnet is a high performance .NET library for MQTT based communication. It prov
 ### Client
 
 * Communication via TCP (+TLS) or WS (WebSocket) supported
-* Included core _MqttClient_ with low level functionality
+* Included core _LowLevelMqttClient_ with low level functionality
 * Also included _ManagedMqttClient_ which maintains the connection and subscriptions automatically. Also application messages are queued and re-scheduled for higher QoS levels automatically.
 * Rx support (via another project)
 * Compatible with Microsoft Azure IoT Hub
@@ -110,7 +110,7 @@ If you use this library and want to see your project here please create a pull r
 
 MIT License
 
-MQTTnet Copyright (c) 2016-2019 Christian Kratky
+MQTTnet Copyright (c) 2016-2020 Christian Kratky
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
