@@ -55,6 +55,7 @@ namespace MQTTnet.Implementations
             }
 
             var clientWebSocket = new ClientWebSocket();
+
             try
             {
                 SetupClientWebSocket(clientWebSocket);
@@ -68,12 +69,7 @@ namespace MQTTnet.Implementations
                 throw;
             }
 
-#if NETSTANDARD2_1
-            if (_options.TlsOptions?.UseTls == true)
-            {
-                clientWebSocket.Options.RemoteCertificateValidationCallback = InternalUserCertificateValidationCallback;
-            }
-#endif
+
             _webSocket = clientWebSocket;
             IsSecureConnection = uri.StartsWith("wss://", StringComparison.OrdinalIgnoreCase);
         }
