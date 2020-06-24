@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace MQTTnet.Server
 {
-    public class MqttClientSessionsManager : Disposable
+    public sealed class MqttClientSessionsManager : IDisposable
     {
         readonly AsyncQueue<MqttEnqueuedApplicationMessage> _messageQueue = new AsyncQueue<MqttEnqueuedApplicationMessage>();
 
@@ -150,13 +150,9 @@ namespace MQTTnet.Server
             _logger.Verbose("Session for client '{0}' deleted.", clientId);
         }
 
-        protected override void Dispose(bool disposing)
+        public void Dispose()
         {
-            if (disposing)
-            {
-                _messageQueue?.Dispose();
-            }
-            base.Dispose(disposing);
+            _messageQueue?.Dispose();
         }
 
         async Task TryProcessQueuedApplicationMessagesAsync(CancellationToken cancellationToken)
@@ -224,12 +220,31 @@ namespace MQTTnet.Server
                     await _retainedMessagesManager.HandleMessageAsync(sender?.ClientId, applicationMessage).ConfigureAwait(false);
                 }
 
+                var deliveryCount = 0;
+
                 foreach (var clientSession in _sessions.Values)
                 {
-                    clientSession.EnqueueApplicationMessage(
+                    var isSubscribed = clientSession.EnqueueApplicationMessage(
                         applicationMessage,
                         sender?.ClientId,
                         false);
+
+                    if (isSubscribed)
+                    {
+                        deliveryCount++;
+                    }
+                }
+
+                if (deliveryCount == 0)
+                {
+                    var undeliveredMessageInterceptor = _options.UndeliveredMessageInterceptor;
+
+                    if (undeliveredMessageInterceptor == null)
+                    {
+                        return;
+                    }
+
+                    await undeliveredMessageInterceptor.InterceptApplicationMessagePublishAsync(new MqttApplicationMessageInterceptorContext(sender?.ClientId, sender?.Session?.Items, applicationMessage));
                 }
             }
             catch (OperationCanceledException)
@@ -245,9 +260,9 @@ namespace MQTTnet.Server
         {
             string clientId = null;
 
-            MqttConnectPacket connectPacket;
             try
             {
+                MqttConnectPacket connectPacket;
                 try
                 {
                     var firstPacket = await channelAdapter.ReceivePacketAsync(_options.DefaultCommunicationTimeout, cancellationToken).ConfigureAwait(false);

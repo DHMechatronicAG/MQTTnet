@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace MQTTnet.Implementations
 {
-    public sealed class MqttTcpChannel : IDisposable, IMqttChannel
+    public sealed class MqttTcpChannel : IMqttChannel
     {
         readonly IMqttClientOptions _clientOptions;
         readonly MqttClientTcpOptions _options;
@@ -127,7 +127,14 @@ namespace MQTTnet.Implementations
                 // Workaround for: https://github.com/dotnet/corefx/issues/24430
                 using (cancellationToken.Register(Dispose))
                 {
-                    return await _stream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+                    var stream = _stream;
+
+                    if (stream == null)
+                    {
+                        throw new ObjectDisposedException(nameof(stream));
+                    }
+
+                    return await stream.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (ObjectDisposedException)
@@ -157,12 +164,18 @@ namespace MQTTnet.Implementations
                 // Workaround for: https://github.com/dotnet/corefx/issues/24430
                 using (cancellationToken.Register(Dispose))
                 {
-                    await _stream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+                    var stream = _stream;
+
+                    if (stream == null)
+                    {
+                        throw new ObjectDisposedException(nameof(stream));
+                    }
+
+                    await stream.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (ObjectDisposedException)
             {
-                return;
             }
             catch (IOException exception)
             {
@@ -205,7 +218,6 @@ namespace MQTTnet.Implementations
             {
                 return certificateValidationCallback(x509Certificate, chain, sslPolicyErrors, _clientOptions);
             }
-
 #endregion
 
             var certificateValidationHandler = _options?.TlsOptions?.CertificateValidationHandler;
@@ -229,7 +241,7 @@ namespace MQTTnet.Implementations
 
             if (chain.ChainStatus.Any(c => c.Status == X509ChainStatusFlags.RevocationStatusUnknown || c.Status == X509ChainStatusFlags.Revoked || c.Status == X509ChainStatusFlags.OfflineRevocation))
             {
-                if (!_options.TlsOptions.IgnoreCertificateRevocationErrors)
+                if (_options?.TlsOptions?.IgnoreCertificateRevocationErrors != true)
                 {
                     return false;
                 }
@@ -237,13 +249,13 @@ namespace MQTTnet.Implementations
 
             if (chain.ChainStatus.Any(c => c.Status == X509ChainStatusFlags.PartialChain))
             {
-                if (!_options.TlsOptions.IgnoreCertificateChainErrors)
+                if (_options?.TlsOptions?.IgnoreCertificateChainErrors != true)
                 {
                     return false;
                 }
             }
 
-            return _options.TlsOptions.AllowUntrustedCertificates;
+            return _options?.TlsOptions?.AllowUntrustedCertificates == true;
         }
 
         X509CertificateCollection LoadCertificates()
