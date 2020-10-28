@@ -191,7 +191,7 @@ namespace MQTTnet.Implementations
             }
 
             var certificateValidationHandler = _options.TlsOptions?.CertificateValidationHandler;
-#if NETSTANDARD2_1
+#if NETSTANDARD2_1 || NETCOREAPP3_1
             if (certificateValidationHandler != null)
             {
                 clientWebSocket.Options.RemoteCertificateValidationCallback = new System.Net.Security.RemoteCertificateValidationCallback((sender, certificate, chain, sslPolicyErrors) =>
