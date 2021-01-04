@@ -2,9 +2,7 @@
 using MQTTnet.Client.Options;
 using MQTTnet.Internal;
 using System;
-using System.Linq;
 using System.Net;
-using System.Net.Security;
 using System.Net.WebSockets;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
@@ -55,7 +53,6 @@ namespace MQTTnet.Implementations
             }
 
             var clientWebSocket = new ClientWebSocket();
-
             try
             {
                 SetupClientWebSocket(clientWebSocket);
@@ -69,40 +66,8 @@ namespace MQTTnet.Implementations
                 throw;
             }
 
-
             _webSocket = clientWebSocket;
             IsSecureConnection = uri.StartsWith("wss://", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private bool InternalUserCertificateValidationCallback(object sender, X509Certificate x509Certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
-        {
-            if (_options.TlsOptions.CertificateValidationCallback != null)
-            {
-                return _options.TlsOptions.CertificateValidationCallback(x509Certificate, chain, sslPolicyErrors, null);
-            }
-
-            if (sslPolicyErrors == SslPolicyErrors.None)
-            {
-                return true;
-            }
-
-            if (chain.ChainStatus.Any(c => c.Status == X509ChainStatusFlags.RevocationStatusUnknown || c.Status == X509ChainStatusFlags.Revoked || c.Status == X509ChainStatusFlags.OfflineRevocation))
-            {
-                if (!_options.TlsOptions.IgnoreCertificateRevocationErrors)
-                {
-                    return false;
-                }
-            }
-
-            if (chain.ChainStatus.Any(c => c.Status == X509ChainStatusFlags.PartialChain))
-            {
-                if (!_options.TlsOptions.IgnoreCertificateChainErrors)
-                {
-                    return false;
-                }
-            }
-
-            return _options.TlsOptions.AllowUntrustedCertificates;
         }
 
         public async Task DisconnectAsync(CancellationToken cancellationToken)
@@ -191,10 +156,20 @@ namespace MQTTnet.Implementations
             }
 
             var certificateValidationHandler = _options.TlsOptions?.CertificateValidationHandler;
-#if NETSTANDARD2_1 || NETCOREAPP3_1
             if (certificateValidationHandler != null)
             {
-                clientWebSocket.Options.RemoteCertificateValidationCallback = new System.Net.Security.RemoteCertificateValidationCallback((sender, certificate, chain, sslPolicyErrors) =>
+#if NETSTANDARD1_3
+                throw new NotSupportedException("Remote certificate validation callback is not supported when using 'netstandard1.3'.");
+#elif NETSTANDARD2_0
+                throw new NotSupportedException("Remote certificate validation callback is not supported when using 'netstandard2.0'.");
+#elif WINDOWS_UWP
+                throw new NotSupportedException("Remote certificate validation callback is not supported when using 'uap10.0'.");
+#elif NET452
+                throw new NotSupportedException("Remote certificate validation callback is not supported when using 'net452'.");
+#elif NET461
+                throw new NotSupportedException("Remote certificate validation callback is not supported when using 'net461'.");
+#else
+                clientWebSocket.Options.RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) =>
                 {
                     // TODO: Find a way to add client options to same callback. Problem is that they have a different type.
                     var context = new MqttClientCertificateValidationCallbackContext
@@ -206,14 +181,9 @@ namespace MQTTnet.Implementations
                     };
 
                     return certificateValidationHandler(context);
-                });
-            }
-#else
-            if (certificateValidationHandler != null)
-            {
-                throw new NotSupportedException("The remote certificate validation callback for Web Sockets is only supported for netstandard 2.1+");
-            }
+                };
 #endif
+            }
         }
 
         void Cleanup()
@@ -242,9 +212,9 @@ namespace MQTTnet.Implementations
             }
 
 #if WINDOWS_UWP
-            throw new NotSupportedException("Proxies are not supported in UWP.");
+            throw new NotSupportedException("Proxies are not supported when using 'uap10.0'.");
 #elif NETSTANDARD1_3
-            throw new NotSupportedException("Proxies are not supported in netstandard 1.3.");
+            throw new NotSupportedException("Proxies are not supported when using 'netstandard 1.3'.");
 #else
             var proxyUri = new Uri(_options.ProxyOptions.Address);
 
