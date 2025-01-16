@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using MQTTnet.Diagnostics.Logger;
+using MQTTnet.Server.EnhancedAuthentication;
 using MQTTnet.Server.Internal.Adapter;
 
 namespace MQTTnet.Server;
@@ -32,6 +33,11 @@ public sealed class MqttServerFactory
         return new MqttApplicationMessageBuilder();
     }
 
+    public ExchangeEnhancedAuthenticationOptionsFactory CreateExchangeExtendedAuthenticationOptionsBuilder()
+    {
+        return new ExchangeEnhancedAuthenticationOptionsFactory();
+    }
+
     public MqttServer CreateMqttServer(MqttServerOptions options)
     {
         return CreateMqttServer(options, DefaultLogger);
@@ -39,10 +45,7 @@ public sealed class MqttServerFactory
 
     public MqttServer CreateMqttServer(MqttServerOptions options, IMqttNetLogger logger)
     {
-        if (logger == null)
-        {
-            throw new ArgumentNullException(nameof(logger));
-        }
+        ArgumentNullException.ThrowIfNull(logger);
 
         var serverAdapters = DefaultServerAdapters.Select(a => a.Invoke(this));
         return CreateMqttServer(options, serverAdapters, logger);
@@ -50,25 +53,15 @@ public sealed class MqttServerFactory
 
     public MqttServer CreateMqttServer(MqttServerOptions options, IEnumerable<IMqttServerAdapter> serverAdapters, IMqttNetLogger logger)
     {
-        if (serverAdapters == null)
-        {
-            throw new ArgumentNullException(nameof(serverAdapters));
-        }
-
-        if (logger == null)
-        {
-            throw new ArgumentNullException(nameof(logger));
-        }
+        ArgumentNullException.ThrowIfNull(serverAdapters);
+        ArgumentNullException.ThrowIfNull(logger);
 
         return new MqttServer(options, serverAdapters, logger);
     }
 
     public MqttServer CreateMqttServer(MqttServerOptions options, IEnumerable<IMqttServerAdapter> serverAdapters)
     {
-        if (serverAdapters == null)
-        {
-            throw new ArgumentNullException(nameof(serverAdapters));
-        }
+        ArgumentNullException.ThrowIfNull(serverAdapters);
 
         return new MqttServer(options, serverAdapters, DefaultLogger);
     }

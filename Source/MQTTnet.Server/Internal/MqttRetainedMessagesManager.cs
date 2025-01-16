@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System.Collections.ObjectModel;
 using MQTTnet.Diagnostics.Logger;
 using MQTTnet.Internal;
 
@@ -19,8 +20,7 @@ namespace MQTTnet.Server.Internal
         {
             _eventContainer = eventContainer ?? throw new ArgumentNullException(nameof(eventContainer));
 
-            if (logger == null)
-                throw new ArgumentNullException(nameof(logger));
+            ArgumentNullException.ThrowIfNull(logger);
 
             _logger = logger.WithSource(nameof(MqttRetainedMessagesManager));
         }
@@ -53,10 +53,7 @@ namespace MQTTnet.Server.Internal
 
         public async Task UpdateMessage(string clientId, MqttApplicationMessage applicationMessage)
         {
-            if (applicationMessage == null)
-            {
-                throw new ArgumentNullException(nameof(applicationMessage));
-            }
+            ArgumentNullException.ThrowIfNull(applicationMessage);
 
             try
             {

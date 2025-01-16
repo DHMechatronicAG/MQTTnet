@@ -3,8 +3,8 @@ name: CI
 on: [push, pull_request]
 
 env:
-  VERSION: "5.0.0.${{github.run_number}}"
-  PACKAGE_SUFFIX: "-RC"
+  VERSION: "5.0.1.${{github.run_number}}"
+  PACKAGE_SUFFIX: ""
 
 jobs:
   build:
@@ -107,7 +107,8 @@ jobs:
         run: dotnet nuget push ${{ github.workspace }}/nugets/**/*.nupkg -k ${{ secrets.MYGET_API_KEY }} -s https://www.myget.org/F/mqttnet/api/v3/index.json --skip-duplicate
 
   publish-nuget:
-    if: ${{ github.event_name == 'published' }}
+    # Tag schema is 'v5.0.0-rc' etc.
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: [sign, test]
     runs-on: ubuntu-latest
 
