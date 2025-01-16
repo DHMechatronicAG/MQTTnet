@@ -26,18 +26,18 @@ namespace MQTTnet.Implementations
             _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
-        public MqttWebSocketChannel(WebSocket webSocket, string endpoint, bool isSecureConnection, X509Certificate2 clientCertificate)
+        public MqttWebSocketChannel(WebSocket webSocket, EndPoint remoteEndPoint, bool isSecureConnection, X509Certificate2 clientCertificate)
         {
             _webSocket = webSocket ?? throw new ArgumentNullException(nameof(webSocket));
 
-            Endpoint = endpoint;
+            RemoteEndPoint = remoteEndPoint;
             IsSecureConnection = isSecureConnection;
             ClientCertificate = clientCertificate;
         }
 
         public X509Certificate2 ClientCertificate { get; }
 
-        public string Endpoint { get; }
+        public EndPoint RemoteEndPoint { get; }
 
         public bool IsSecureConnection { get; private set; }
 
@@ -199,6 +199,9 @@ namespace MQTTnet.Implementations
                     clientWebSocket.Options.ClientCertificates = certificates;
                 }
             }
+
+            if (_options.DangerousDeflateOptions != null)
+                clientWebSocket.Options.DangerousDeflateOptions = _options.DangerousDeflateOptions;
 
             // Only set the value if it is actually true. This property is not supported on all platforms
             // and will throw a _PlatformNotSupported_ (i.e. WASM) exception when being used regardless of the actual value.

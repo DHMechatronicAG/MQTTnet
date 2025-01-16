@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -98,13 +98,6 @@ public sealed class MqttClientOptionsBuilder
         return this;
     }
 
-    public MqttClientOptionsBuilder WithAuthentication(string method, byte[] data)
-    {
-        _options.AuthenticationMethod = method;
-        _options.AuthenticationData = data;
-        return this;
-    }
-
     /// <summary>
     ///     Clean session is used in MQTT versions below 5.0.0. It is the same as setting "CleanStart".
     /// </summary>
@@ -131,30 +124,34 @@ public sealed class MqttClientOptionsBuilder
 
     public MqttClientOptionsBuilder WithConnectionUri(Uri uri)
     {
-        if (uri == null)
-        {
-            throw new ArgumentNullException(nameof(uri));
-        }
+        ArgumentNullException.ThrowIfNull(uri);
 
         var port = uri.IsDefaultPort ? null : (int?)uri.Port;
         switch (uri.Scheme.ToLower())
         {
             case "tcp":
             case "mqtt":
-                WithTcpServer(uri.Host, port);
+                WithTcpServer(uri.Host, port).WithAddressFamily(AddressFamily.Unspecified).WithProtocolType(ProtocolType.Tcp).WithTlsOptions(o => o.UseTls(false));
                 break;
 
             case "mqtts":
-                WithTcpServer(uri.Host, port)
-                    .WithTlsOptions(
-                        o =>
-                        {
-                        });
+                WithTcpServer(uri.Host, port).WithAddressFamily(AddressFamily.Unspecified).WithProtocolType(ProtocolType.Tcp).WithTlsOptions(o => o.UseTls());
                 break;
 
             case "ws":
+                WithWebSocketServer(o => o.WithUri(uri.ToString())).WithTlsOptions(o => o.UseTls(false));
+                break;
+
             case "wss":
-                WithWebSocketServer(o => o.WithUri(uri.ToString()));
+                WithWebSocketServer(o => o.WithUri(uri.ToString())).WithTlsOptions(o => o.UseTls());
+                break;
+
+            // unix:///path/to/socket
+            case "unix":
+                WithEndPoint(new UnixDomainSocketEndPoint(uri.AbsolutePath))
+                    .WithAddressFamily(AddressFamily.Unix)
+                    .WithProtocolType(ProtocolType.Unspecified)
+                    .WithTlsOptions(o => o.UseTls(false));
                 break;
 
             default:
@@ -208,9 +205,16 @@ public sealed class MqttClientOptionsBuilder
         return this;
     }
 
-    public MqttClientOptionsBuilder WithExtendedAuthenticationExchangeHandler(IMqttExtendedAuthenticationExchangeHandler handler)
+    public MqttClientOptionsBuilder WithEnhancedAuthentication(string method, byte[] data = null)
     {
-        _options.ExtendedAuthenticationExchangeHandler = handler;
+        _options.AuthenticationMethod = method;
+        _options.AuthenticationData = data;
+        return this;
+    }
+
+    public MqttClientOptionsBuilder WithEnhancedAuthenticationHandler(IMqttEnhancedAuthenticationHandler handler)
+    {
+        _options.EnhancedAuthenticationHandler = handler;
         return this;
     }
 
@@ -286,10 +290,7 @@ public sealed class MqttClientOptionsBuilder
 
     public MqttClientOptionsBuilder WithTcpServer(string host, int? port = null, AddressFamily addressFamily = AddressFamily.Unspecified)
     {
-        if (host == null)
-        {
-            throw new ArgumentNullException(nameof(host));
-        }
+        ArgumentNullException.ThrowIfNull(host);
 
         _tcpOptions = new MqttClientTcpOptions();
 
@@ -303,10 +304,7 @@ public sealed class MqttClientOptionsBuilder
 
     public MqttClientOptionsBuilder WithTcpServer(Action<MqttClientTcpOptions> optionsBuilder)
     {
-        if (optionsBuilder == null)
-        {
-            throw new ArgumentNullException(nameof(optionsBuilder));
-        }
+        ArgumentNullException.ThrowIfNull(optionsBuilder);
 
         _tcpOptions = new MqttClientTcpOptions();
         optionsBuilder.Invoke(_tcpOptions);
@@ -332,10 +330,7 @@ public sealed class MqttClientOptionsBuilder
 
     public MqttClientOptionsBuilder WithTlsOptions(Action<MqttClientTlsOptionsBuilder> configure)
     {
-        if (configure == null)
-        {
-            throw new ArgumentNullException(nameof(configure));
-        }
+        ArgumentNullException.ThrowIfNull(configure);
 
         var builder = new MqttClientTlsOptionsBuilder();
         configure.Invoke(builder);
@@ -358,9 +353,9 @@ public sealed class MqttClientOptionsBuilder
     ///     Not all brokers support this feature so it may be necessary to set it to false if your bridge does not connect
     ///     properly.
     /// </summary>
-    public MqttClientOptionsBuilder WithTryPrivate(bool tryPrivate = true)
+    public MqttClientOptionsBuilder WithTryPrivate(bool value = true)
     {
-        _options.TryPrivate = true;
+        _options.TryPrivate = value;
         return this;
     }
 
@@ -377,10 +372,7 @@ public sealed class MqttClientOptionsBuilder
 
     public MqttClientOptionsBuilder WithWebSocketServer(Action<MqttClientWebSocketOptionsBuilder> configure)
     {
-        if (configure == null)
-        {
-            throw new ArgumentNullException(nameof(configure));
-        }
+        ArgumentNullException.ThrowIfNull(configure);
 
         var webSocketOptionsBuilder = new MqttClientWebSocketOptionsBuilder();
         configure.Invoke(webSocketOptionsBuilder);

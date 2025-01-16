@@ -115,6 +115,12 @@ namespace MQTTnet.Server
             return this;
         }
 
+        public MqttServerOptionsBuilder WithPendingMessagesOverflowStrategy(MqttPendingMessagesOverflowStrategy value)
+        {
+            _options.PendingMessagesOverflowStrategy = value;
+            return this;
+        }
+
         public MqttServerOptionsBuilder WithoutDefaultEndpoint()
         {
             _options.DefaultEndpointOptions.IsEnabled = false;
@@ -180,10 +186,7 @@ namespace MQTTnet.Server
 
         public MqttServerOptionsBuilder WithEncryptionCertificate(byte[] value, IMqttServerCertificateCredentials credentials = null)
         {
-            if (value == null)
-            {
-                throw new ArgumentNullException(nameof(value));
-            }
+            ArgumentNullException.ThrowIfNull(value);
 
             _options.TlsEndpointOptions.CertificateProvider = new BlobCertificateProvider(value)
             {
@@ -195,10 +198,7 @@ namespace MQTTnet.Server
 
         public MqttServerOptionsBuilder WithEncryptionCertificate(X509Certificate2 certificate)
         {
-            if (certificate == null)
-            {
-                throw new ArgumentNullException(nameof(certificate));
-            }
+            ArgumentNullException.ThrowIfNull(certificate);
 
             _options.TlsEndpointOptions.CertificateProvider = new X509CertificateProvider(certificate);
             return this;
@@ -206,10 +206,7 @@ namespace MQTTnet.Server
 
         public MqttServerOptionsBuilder WithEncryptionCertificate(ICertificateProvider certificateProvider)
         {
-            if (certificateProvider == null)
-            {
-                throw new ArgumentNullException(nameof(certificateProvider));
-            }
+            ArgumentNullException.ThrowIfNull(certificateProvider);
 
             _options.TlsEndpointOptions.CertificateProvider = certificateProvider;
 

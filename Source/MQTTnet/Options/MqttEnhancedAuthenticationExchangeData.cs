@@ -8,7 +8,7 @@ using MQTTnet.Protocol;
 
 namespace MQTTnet;
 
-public class MqttExtendedAuthenticationExchangeData
+public class MqttEnhancedAuthenticationExchangeData
 {
     /// <summary>
     ///     Gets or sets the authentication data.

@@ -13,14 +13,15 @@ public static class MqttClientOptionsValidator
 {
     public static void ThrowIfNotSupported(MqttClientOptions options)
     {
-        if (options == null)
-        {
-            throw new ArgumentNullException(nameof(options));
-        }
+        ArgumentNullException.ThrowIfNull(options);
 
         if (options.ProtocolVersion == MqttProtocolVersion.V500)
         {
-            // Everything is supported.
+            if (options.TryPrivate)
+            {
+                throw new NotSupportedException("Feature TryPrivate only works with MQTT version 3.1 and 3.1.1.");
+            }
+
             return;
         }
 
@@ -103,6 +104,11 @@ public static class MqttClientOptionsValidator
         if (options.WillUserProperties?.Any() == true)
         {
             Throw(nameof(options.WillUserProperties));
+        }
+
+        if (options.EnhancedAuthenticationHandler != null)
+        {
+            Throw(nameof(options.EnhancedAuthenticationHandler));
         }
     }
 
