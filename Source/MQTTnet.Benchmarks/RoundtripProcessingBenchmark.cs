@@ -1,7 +1,6 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using MQTTnet.Tests.Mockups;
-using MQTTnet.Tests.Server;
 
 namespace MQTTnet.Benchmarks;
 
@@ -24,6 +23,6 @@ public class RoundtripProcessingBenchmark : BaseBenchmark
     [Benchmark]
     public void Handle_100_000_Messages_In_Receiving_Client()
     {
-        new Load_Tests().Handle_100_000_Messages_In_Receiving_Client().GetAwaiter().GetResult();
+        //new Load_Tests().Handle_100_000_Messages_In_Receiving_Client().GetAwaiter().GetResult();
     }
 }

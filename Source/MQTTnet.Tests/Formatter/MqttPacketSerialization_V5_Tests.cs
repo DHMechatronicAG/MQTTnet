@@ -2,9 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
 using System.Buffers;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Formatter;
 using MQTTnet.Packets;
 using MQTTnet.Protocol;
@@ -331,7 +329,7 @@ public sealed class MqttPacketSerialization_V5_Tests
 
         Assert.AreEqual(subAckPacket.PacketIdentifier, deserialized.PacketIdentifier);
         Assert.AreEqual(subAckPacket.ReasonString, deserialized.ReasonString);
-        Assert.AreEqual(subAckPacket.ReasonCodes.Count, deserialized.ReasonCodes.Count);
+        Assert.HasCount(subAckPacket.ReasonCodes.Count, deserialized.ReasonCodes);
         Assert.AreEqual(subAckPacket.ReasonCodes[0], deserialized.ReasonCodes[0]);
         CollectionAssert.AreEqual(subAckPacket.UserProperties, deserialized.UserProperties);
     }
@@ -361,7 +359,7 @@ public sealed class MqttPacketSerialization_V5_Tests
 
         Assert.AreEqual(subscribePacket.PacketIdentifier, deserialized.PacketIdentifier);
         Assert.AreEqual(subscribePacket.SubscriptionIdentifier, deserialized.SubscriptionIdentifier);
-        Assert.AreEqual(1, deserialized.TopicFilters.Count);
+        Assert.HasCount(1, deserialized.TopicFilters);
         Assert.AreEqual(subscribePacket.TopicFilters[0].Topic, deserialized.TopicFilters[0].Topic);
         Assert.AreEqual(subscribePacket.TopicFilters[0].NoLocal, deserialized.TopicFilters[0].NoLocal);
         Assert.AreEqual(subscribePacket.TopicFilters[0].RetainHandling, deserialized.TopicFilters[0].RetainHandling);
@@ -385,7 +383,7 @@ public sealed class MqttPacketSerialization_V5_Tests
 
         Assert.AreEqual(unsubAckPacket.PacketIdentifier, deserialized.PacketIdentifier);
         Assert.AreEqual(unsubAckPacket.ReasonString, deserialized.ReasonString);
-        Assert.AreEqual(unsubAckPacket.ReasonCodes.Count, deserialized.ReasonCodes.Count);
+        Assert.HasCount(unsubAckPacket.ReasonCodes.Count, deserialized.ReasonCodes);
         Assert.AreEqual(unsubAckPacket.ReasonCodes[0], deserialized.ReasonCodes[0]);
         CollectionAssert.AreEqual(unsubAckPacket.UserProperties, deserialized.UserProperties);
     }
@@ -403,7 +401,7 @@ public sealed class MqttPacketSerialization_V5_Tests
         var deserialized = MqttPacketSerializationHelper.EncodeAndDecodePacket(unsubscribePacket, MqttProtocolVersion.V500);
 
         Assert.AreEqual(unsubscribePacket.PacketIdentifier, deserialized.PacketIdentifier);
-        Assert.AreEqual(unsubscribePacket.TopicFilters.Count, deserialized.TopicFilters.Count);
+        Assert.HasCount(unsubscribePacket.TopicFilters.Count, deserialized.TopicFilters);
         Assert.AreEqual(unsubscribePacket.TopicFilters[0], deserialized.TopicFilters[0]);
         CollectionAssert.AreEqual(unsubscribePacket.UserProperties, deserialized.UserProperties);
     }

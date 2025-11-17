@@ -4,16 +4,14 @@ using MQTTnet.AspNetCore;
 using MQTTnet.Exceptions;
 using MQTTnet.Formatter;
 using System.Buffers;
-using System.IO;
 using System.IO.Pipelines;
-using System.Threading.Tasks;
 
 namespace MQTTnet.Benchmarks;
 
 [SimpleJob(RuntimeMoniker.Net60)]
 [RPlotExporter, RankColumn]
 [MemoryDiagnoser]
-public class ReaderExtensionsBenchmark
+public sealed class ReaderExtensionsBenchmark : IDisposable, IAsyncDisposable
 {
     MqttPacketFormatterAdapter _mqttPacketFormatter;
     MemoryStream _stream;
@@ -81,6 +79,19 @@ public class ReaderExtensionsBenchmark
                 // before yielding the read again.
                 input.AdvanceTo(consumed, observed);
             }
+        }
+    }
+
+    public void Dispose()
+    {
+        _stream?.Dispose();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_stream != null)
+        {
+            await _stream.DisposeAsync();
         }
     }
 }

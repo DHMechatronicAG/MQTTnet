@@ -4,10 +4,7 @@
 
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.IO;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Formatter;
 using MQTTnet.Internal;
 using MQTTnet.Packets;
@@ -77,7 +74,7 @@ public sealed class Client_Tests : BaseTestClass
 
         Assert.IsNotNull(receivedMessage);
 
-        Assert.AreEqual(2, receivedMessage.UserProperties.Count);
+        Assert.HasCount(2, receivedMessage.UserProperties);
     }
 
     [TestMethod]
@@ -288,7 +285,7 @@ public sealed class Client_Tests : BaseTestClass
 
         await client.DisconnectAsync();
 
-        Assert.AreEqual(1, result.Items.Count);
+        Assert.HasCount(1, result.Items);
         Assert.AreEqual(MqttClientSubscribeResultCode.GrantedQoS1, result.Items.First().ResultCode);
     }
 
@@ -312,7 +309,7 @@ public sealed class Client_Tests : BaseTestClass
         await client2.DisconnectAsync();
         await client1.DisconnectAsync();
 
-        Assert.AreEqual(1, testMessageHandler.ReceivedEventArgs.Count);
+        Assert.HasCount(1, testMessageHandler.ReceivedEventArgs);
         Assert.AreEqual("Subscribe_And_Publish_client1", testMessageHandler.ReceivedEventArgs[0].ClientId);
         Assert.AreEqual("a", testMessageHandler.ReceivedEventArgs[0].ApplicationMessage.Topic);
         Assert.AreEqual("b", testMessageHandler.ReceivedEventArgs[0].ApplicationMessage.ConvertPayloadToString());
@@ -330,7 +327,7 @@ public sealed class Client_Tests : BaseTestClass
         var result = await client.UnsubscribeAsync("a");
         await client.DisconnectAsync();
 
-        Assert.AreEqual(1, result.Items.Count);
+        Assert.HasCount(1, result.Items);
         Assert.AreEqual(MqttClientUnsubscribeResultCode.Success, result.Items.First().ResultCode);
     }
 

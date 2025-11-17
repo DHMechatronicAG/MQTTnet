@@ -2,11 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Formatter;
 using MQTTnet.Tests.Mockups;
-using System.Threading;
-using System.Threading.Tasks;
 using MQTTnet.Internal;
 using MQTTnet.Protocol;
 using MQTTnet.Server;
@@ -113,7 +110,7 @@ public sealed class Server_Tests : BaseTestClass
 
         // Session should not be present
 
-        Assert.IsTrue(!result.IsSessionPresent, "Session is present when it should not");
+        Assert.IsFalse(result.IsSessionPresent, "Session is present when it should not");
     }
 
     [TestMethod]
@@ -163,7 +160,7 @@ public sealed class Server_Tests : BaseTestClass
 
         // Session should be present
 
-        Assert.IsTrue(!result3.IsSessionPresent, "Session is present when it should not");
+        Assert.IsFalse(result3.IsSessionPresent, "Session is present when it should not");
     }
 
     [TestMethod]
@@ -194,7 +191,7 @@ public sealed class Server_Tests : BaseTestClass
 
         // Test client should be connected now
 
-        Assert.IsTrue(testClientId != null);
+        Assert.IsNotNull(testClientId);
 
         // Have the server disconnect the client with AdministrativeAction reason
 

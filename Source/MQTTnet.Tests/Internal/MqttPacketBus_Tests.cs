@@ -2,11 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Internal;
 using MQTTnet.Packets;
 
@@ -35,15 +31,15 @@ public sealed class MqttPacketBus_Tests
 
         Assert.AreEqual(9, bus.TotalItemsCount);
 
-        Assert.IsInstanceOfType(bus.DequeueItemAsync(CancellationToken.None).Result.Packet, typeof(MqttPublishPacket));
-        Assert.IsInstanceOfType(bus.DequeueItemAsync(CancellationToken.None).Result.Packet, typeof(MqttSubAckPacket));
-        Assert.IsInstanceOfType(bus.DequeueItemAsync(CancellationToken.None).Result.Packet, typeof(MqttPingRespPacket));
-        Assert.IsInstanceOfType(bus.DequeueItemAsync(CancellationToken.None).Result.Packet, typeof(MqttPublishPacket));
-        Assert.IsInstanceOfType(bus.DequeueItemAsync(CancellationToken.None).Result.Packet, typeof(MqttSubAckPacket));
-        Assert.IsInstanceOfType(bus.DequeueItemAsync(CancellationToken.None).Result.Packet, typeof(MqttPingRespPacket));
-        Assert.IsInstanceOfType(bus.DequeueItemAsync(CancellationToken.None).Result.Packet, typeof(MqttPublishPacket));
-        Assert.IsInstanceOfType(bus.DequeueItemAsync(CancellationToken.None).Result.Packet, typeof(MqttSubAckPacket));
-        Assert.IsInstanceOfType(bus.DequeueItemAsync(CancellationToken.None).Result.Packet, typeof(MqttPingRespPacket));
+        Assert.IsInstanceOfType<MqttPublishPacket>(bus.DequeueItemAsync(CancellationToken.None).Result.Packet);
+        Assert.IsInstanceOfType<MqttSubAckPacket>(bus.DequeueItemAsync(CancellationToken.None).Result.Packet);
+        Assert.IsInstanceOfType<MqttPingRespPacket>(bus.DequeueItemAsync(CancellationToken.None).Result.Packet);
+        Assert.IsInstanceOfType<MqttPublishPacket>(bus.DequeueItemAsync(CancellationToken.None).Result.Packet);
+        Assert.IsInstanceOfType<MqttSubAckPacket>(bus.DequeueItemAsync(CancellationToken.None).Result.Packet);
+        Assert.IsInstanceOfType<MqttPingRespPacket>(bus.DequeueItemAsync(CancellationToken.None).Result.Packet);
+        Assert.IsInstanceOfType<MqttPublishPacket>(bus.DequeueItemAsync(CancellationToken.None).Result.Packet);
+        Assert.IsInstanceOfType<MqttSubAckPacket>(bus.DequeueItemAsync(CancellationToken.None).Result.Packet);
+        Assert.IsInstanceOfType<MqttPingRespPacket>(bus.DequeueItemAsync(CancellationToken.None).Result.Packet);
 
         Assert.AreEqual(0, bus.TotalItemsCount);
     }
@@ -96,13 +92,13 @@ public sealed class MqttPacketBus_Tests
         Assert.AreEqual(3, bus.TotalItemsCount);
 
         var exportedPackets = bus.ExportPackets(MqttPacketBusPartition.Control);
-        Assert.AreEqual(0, exportedPackets.Count);
+        Assert.HasCount(0, exportedPackets);
 
         exportedPackets = bus.ExportPackets(MqttPacketBusPartition.Health);
-        Assert.AreEqual(0, exportedPackets.Count);
+        Assert.HasCount(0, exportedPackets);
 
         exportedPackets = bus.ExportPackets(MqttPacketBusPartition.Data);
-        Assert.AreEqual(3, exportedPackets.Count);
+        Assert.HasCount(3, exportedPackets);
 
         Assert.AreEqual(3, bus.TotalItemsCount);
     }
@@ -137,12 +133,15 @@ public sealed class MqttPacketBus_Tests
     }
 
     [TestMethod]
-    [ExpectedException(typeof(TaskCanceledException))]
-    public async Task Wait_With_Empty_Bus()
+    public Task Wait_With_Empty_Bus()
     {
-        var bus = new MqttPacketBus();
+        return Assert.ThrowsExactlyAsync<TaskCanceledException>(async () =>
+        {
+            var bus = new MqttPacketBus();
 
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(1));
-        await bus.DequeueItemAsync(timeout.Token);
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+            await bus.DequeueItemAsync(timeout.Token);
+        });
+
     }
 }

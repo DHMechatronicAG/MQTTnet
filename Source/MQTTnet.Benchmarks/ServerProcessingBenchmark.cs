@@ -5,7 +5,6 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using MQTTnet.Tests.Mockups;
-using MQTTnet.Tests.Server;
 
 namespace MQTTnet.Benchmarks;
 
@@ -28,12 +27,12 @@ public class ServerProcessingBenchmark : BaseBenchmark
     [Benchmark]
     public void Handle_100_000_Messages_In_Server_MqttClient()
     {
-        new Load_Tests().Handle_100_000_Messages_In_Server().GetAwaiter().GetResult();
+        //new Load_Tests().Handle_100_000_Messages_In_Server().GetAwaiter().GetResult();
     }
 
-    //[Benchmark]
+    [Benchmark]
     public void Handle_100_000_Messages_In_Server_LowLevelMqttClient()
     {
-        new Load_Tests().Handle_100_000_Messages_In_Low_Level_Client().GetAwaiter().GetResult();
+        //new Load_Tests().Handle_100_000_Messages_In_Low_Level_Client().GetAwaiter().GetResult();
     }
 }

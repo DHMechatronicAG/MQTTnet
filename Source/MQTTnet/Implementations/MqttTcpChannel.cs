@@ -2,16 +2,12 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
 using System.Buffers;
-using System.IO;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.ExceptionServices;
 using System.Security.Cryptography.X509Certificates;
-using System.Threading;
-using System.Threading.Tasks;
 using MQTTnet.Channel;
 using MQTTnet.Exceptions;
 using MQTTnet.Internal;
@@ -37,10 +33,11 @@ public sealed class MqttTcpChannel : IMqttChannel
         IsSecureConnection = clientOptions.ChannelOptions?.TlsOptions?.UseTls == true;
     }
 
-    public MqttTcpChannel(Stream stream, EndPoint remoteEndPoint, X509Certificate2 clientCertificate) : this()
+    public MqttTcpChannel(Stream stream, EndPoint localEndPoint, EndPoint remoteEndPoint, X509Certificate2 clientCertificate) : this()
     {
         _stream = stream ?? throw new ArgumentNullException(nameof(stream));
 
+        LocalEndPoint = localEndPoint;
         RemoteEndPoint = remoteEndPoint;
 
         IsSecureConnection = stream is SslStream;
@@ -49,9 +46,12 @@ public sealed class MqttTcpChannel : IMqttChannel
 
     public X509Certificate2 ClientCertificate { get; }
 
-    public EndPoint RemoteEndPoint { get; private set; }
-
     public bool IsSecureConnection { get; }
+
+
+    public EndPoint LocalEndPoint { get; private set; }
+
+    public EndPoint RemoteEndPoint { get; private set; }
 
     public async Task ConnectAsync(CancellationToken cancellationToken)
     {
@@ -87,7 +87,7 @@ public sealed class MqttTcpChannel : IMqttChannel
                 socket.LingerState = _tcpOptions.LingerState;
             }
 
-            if (_tcpOptions.DualMode.HasValue)
+            if (_tcpOptions.DualMode != null)
             {
                 // It is important to avoid setting the flag if no specific value is set by the user
                 // because on IPv4 only networks the setter will always throw an exception. Regardless
@@ -115,37 +115,20 @@ public sealed class MqttTcpChannel : IMqttChannel
                 SslStream sslStream;
                 if (_tcpOptions.TlsOptions.CertificateSelectionHandler != null)
                 {
-                    sslStream = new SslStream(
-                        networkStream,
-                        false,
-                        InternalUserCertificateValidationCallback,
-                        InternalUserCertificateSelectionCallback);
+                    sslStream = new SslStream(networkStream, false, InternalUserCertificateValidationCallback, InternalUserCertificateSelectionCallback);
                 }
                 else
                 {
                     // Use a different constructor depending on the options for MQTTnet so that we do not have
                     // to copy the exact same behavior of the selection handler.
-                    sslStream = new SslStream(
-                        networkStream,
-                        false,
-                        InternalUserCertificateValidationCallback);
+                    sslStream = new SslStream(networkStream, false, InternalUserCertificateValidationCallback);
                 }
 
                 try
                 {
-                    var sslOptions = new SslClientAuthenticationOptions
-                    {
-                        ApplicationProtocols = _tcpOptions.TlsOptions.ApplicationProtocols,
-                        ClientCertificates = LoadCertificates(),
-                        EnabledSslProtocols = _tcpOptions.TlsOptions.SslProtocol,
-                        CertificateRevocationCheckMode = _tcpOptions.TlsOptions.IgnoreCertificateRevocationErrors
-                            ? X509RevocationMode.NoCheck
-                            : _tcpOptions.TlsOptions.RevocationMode,
-                        TargetHost = targetHost,
-                        CipherSuitesPolicy = _tcpOptions.TlsOptions.CipherSuitesPolicy,
-                        EncryptionPolicy = _tcpOptions.TlsOptions.EncryptionPolicy,
-                        AllowRenegotiation = _tcpOptions.TlsOptions.AllowRenegotiation
-                    };
+                    var sslOptions = CreateSslAuthenticationOptions();
+
+                    sslOptions.TargetHost = targetHost;
 
                     if (_tcpOptions.TlsOptions.TrustChain?.Count > 0)
                     {
@@ -176,6 +159,7 @@ public sealed class MqttTcpChannel : IMqttChannel
             }
 
             RemoteEndPoint = socket.RemoteEndPoint;
+            LocalEndPoint = socket.LocalEndPoint;
         }
         catch
         {
@@ -279,6 +263,21 @@ public sealed class MqttTcpChannel : IMqttChannel
 
             throw;
         }
+    }
+
+    SslClientAuthenticationOptions CreateSslAuthenticationOptions()
+    {
+        var sslOptions = new SslClientAuthenticationOptions
+        {
+            ApplicationProtocols = _tcpOptions.TlsOptions.ApplicationProtocols,
+            ClientCertificates = LoadCertificates(),
+            EnabledSslProtocols = _tcpOptions.TlsOptions.SslProtocol,
+            CertificateRevocationCheckMode = _tcpOptions.TlsOptions.IgnoreCertificateRevocationErrors ? X509RevocationMode.NoCheck : _tcpOptions.TlsOptions.RevocationMode,
+            CipherSuitesPolicy = _tcpOptions.TlsOptions.CipherSuitesPolicy,
+            EncryptionPolicy = _tcpOptions.TlsOptions.EncryptionPolicy,
+            AllowRenegotiation = _tcpOptions.TlsOptions.AllowRenegotiation
+        };
+        return sslOptions;
     }
 
     X509Certificate InternalUserCertificateSelectionCallback(

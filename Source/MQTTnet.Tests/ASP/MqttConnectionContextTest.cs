@@ -2,12 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Connections;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.AspNetCore;
 using MQTTnet.Exceptions;
 using MQTTnet.Formatter;
@@ -33,10 +29,10 @@ public class MqttConnectionContextTest
 
         await pipe.Receive.Writer.WriteAsync(writer.AddMqttHeader(MqttControlPacketType.Connect, []));
 
-        await Assert.ThrowsExceptionAsync<MqttProtocolViolationException>(() => ctx.ReceivePacketAsync(CancellationToken.None));
+        await Assert.ThrowsExactlyAsync<MqttProtocolViolationException>(() => ctx.ReceivePacketAsync(CancellationToken.None));
 
         // the first exception should complete the pipes so if someone tries to use the connection after that it should throw immidiatly
-        await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => ctx.ReceivePacketAsync(CancellationToken.None)).ConfigureAwait(false);
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => ctx.ReceivePacketAsync(CancellationToken.None)).ConfigureAwait(false);
     }
 
     // TODO: Fix test
@@ -102,7 +98,7 @@ public class MqttConnectionContextTest
         await ctx.SendPacketAsync(new MqttPublishPacket { PayloadSegment = new byte[20_000] }, CancellationToken.None).ConfigureAwait(false);
 
         var readResult = await pipe.Send.Reader.ReadAsync();
-        Assert.IsTrue(readResult.Buffer.Length > 20000);
+        Assert.IsGreaterThan(20000, readResult.Buffer.Length);
     }
 
     [TestMethod]
@@ -116,12 +112,14 @@ public class MqttConnectionContextTest
 
         await pipe.Receive.Writer.CompleteAsync();
 
-        await Assert.ThrowsExceptionAsync<MqttCommunicationException>(() => ctx.ReceivePacketAsync(CancellationToken.None)).ConfigureAwait(false);
+        await Assert.ThrowsExactlyAsync<MqttCommunicationException>(() => ctx.ReceivePacketAsync(CancellationToken.None)).ConfigureAwait(false);
     }
 
-    class Startup
+    sealed class Startup
     {
+#pragma warning disable CA1822
         public void Configure(IApplicationBuilder app)
+#pragma warning restore CA1822
         {
         }
     }

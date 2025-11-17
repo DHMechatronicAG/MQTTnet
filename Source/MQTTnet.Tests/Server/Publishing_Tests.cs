@@ -2,8 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Exceptions;
 using MQTTnet.Formatter;
 using MQTTnet.Internal;
@@ -17,17 +15,19 @@ namespace MQTTnet.Tests.Server;
 public sealed class Publishing_Tests : BaseTestClass
 {
     [TestMethod]
-    [ExpectedException(typeof(MqttClientDisconnectedException))]
-    public async Task Disconnect_While_Publishing()
+    public Task Disconnect_While_Publishing()
     {
-        using var testEnvironment = CreateTestEnvironment();
-        var server = await testEnvironment.StartServer();
+        return Assert.ThrowsExactlyAsync<MqttClientDisconnectedException>(async () =>
+        {
+            using var testEnvironment = CreateTestEnvironment();
+            var server = await testEnvironment.StartServer();
 
-        // The client will be disconnected directly after subscribing!
-        server.InterceptingPublishAsync += ev => server.DisconnectClientAsync(ev.ClientId);
+            // The client will be disconnected directly after subscribing!
+            server.InterceptingPublishAsync += ev => server.DisconnectClientAsync(ev.ClientId);
 
-        var client = await testEnvironment.ConnectClient();
-        await client.PublishStringAsync("test", qualityOfServiceLevel: MqttQualityOfServiceLevel.AtLeastOnce);
+            var client = await testEnvironment.ConnectClient();
+            await client.PublishStringAsync("test", qualityOfServiceLevel: MqttQualityOfServiceLevel.AtLeastOnce);
+        });
     }
 
     [TestMethod]
@@ -46,7 +46,7 @@ public sealed class Publishing_Tests : BaseTestClass
 
         Assert.AreEqual(MqttClientPublishReasonCode.NoMatchingSubscribers, publishResult.ReasonCode);
 
-        Assert.AreEqual(true, publishResult.IsSuccess);
+        Assert.IsTrue(publishResult.IsSuccess);
     }
 
     [TestMethod]
@@ -65,7 +65,7 @@ public sealed class Publishing_Tests : BaseTestClass
 
         Assert.AreEqual(MqttClientPublishReasonCode.Success, publishResult.ReasonCode);
 
-        Assert.AreEqual(true, publishResult.IsSuccess);
+        Assert.IsTrue(publishResult.IsSuccess);
     }
 
     [TestMethod]

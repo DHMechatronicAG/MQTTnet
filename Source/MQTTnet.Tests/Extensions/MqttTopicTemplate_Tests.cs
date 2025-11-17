@@ -2,9 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
-using System.Linq;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Exceptions;
 using MQTTnet.Extensions.TopicTemplate;
 
@@ -180,41 +177,45 @@ public sealed class MqttTopicTemplate_Tests
     }
 
     [TestMethod]
-    [ExpectedException(typeof(MqttProtocolViolationException))]
     public void RejectsEmptyTemplate()
     {
-        _ = new MqttTopicTemplate("");
+        Assert.ThrowsExactly<MqttProtocolViolationException>(() => _ = new MqttTopicTemplate(""));
     }
 
     [TestMethod]
-    [ExpectedException(typeof(ArgumentNullException))]
     public void RejectsNullTemplate()
     {
-        _ = new MqttTopicTemplate(null);
+        Assert.ThrowsExactly<ArgumentNullException>(() => _ = new MqttTopicTemplate(null));
     }
 
     [TestMethod]
-    [ExpectedException(typeof(ArgumentException))]
     public void RejectsReservedChars1()
     {
-        var template = new MqttTopicTemplate("A/B/{foo}/D");
-        template.WithParameter("foo", "a#");
+        Assert.ThrowsExactly<ArgumentException>(() =>
+        {
+            var template = new MqttTopicTemplate("A/B/{foo}/D");
+            template.WithParameter("foo", "a#");
+        });
     }
 
     [TestMethod]
-    [ExpectedException(typeof(ArgumentException))]
     public void RejectsReservedChars2()
     {
-        var template = new MqttTopicTemplate("A/B/{foo}/D");
-        template.WithParameter("foo", "a+b");
+        Assert.ThrowsExactly<ArgumentException>(() =>
+        {
+            var template = new MqttTopicTemplate("A/B/{foo}/D");
+            template.WithParameter("foo", "a+b");
+        });
     }
 
     [TestMethod]
-    [ExpectedException(typeof(ArgumentException))]
     public void RejectsReservedChars3()
     {
-        var template = new MqttTopicTemplate("A/B/{foo}/D");
-        template.WithParameter("foo", "a/b");
+        Assert.ThrowsExactly<ArgumentException>(() =>
+        {
+            var template = new MqttTopicTemplate("A/B/{foo}/D");
+            template.WithParameter("foo", "a/b");
+        });
     }
 
     [TestMethod]
@@ -237,7 +238,7 @@ public sealed class MqttTopicTemplate_Tests
     public void SendAndSubscribeSupport2()
     {
         var template = new MqttTopicTemplate("App/v1/{sender}/message");
-        Assert.ThrowsException<ArgumentException>(() => template.BuildMessage());
+        Assert.ThrowsExactly<ArgumentException>(() => template.BuildMessage());
     }
 
     [TestMethod]

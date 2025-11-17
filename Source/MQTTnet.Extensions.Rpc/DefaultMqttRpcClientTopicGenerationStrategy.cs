@@ -2,8 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
-
 namespace MQTTnet.Extensions.Rpc;
 
 public sealed class DefaultMqttRpcClientTopicGenerationStrategy : IMqttRpcClientTopicGenerationStrategy
@@ -12,7 +10,7 @@ public sealed class DefaultMqttRpcClientTopicGenerationStrategy : IMqttRpcClient
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        if (context.MethodName.Contains("/") || context.MethodName.Contains("+") || context.MethodName.Contains("#"))
+        if (context.MethodName.Contains('/') || context.MethodName.Contains('+') || context.MethodName.Contains('#'))
         {
             throw new ArgumentException("The method name cannot contain /, + or #.");
         }

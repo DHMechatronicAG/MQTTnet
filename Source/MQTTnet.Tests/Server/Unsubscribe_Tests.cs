@@ -2,9 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Exceptions;
 using MQTTnet.Formatter;
 using MQTTnet.Internal;
@@ -17,18 +14,20 @@ namespace MQTTnet.Tests.Server;
 public sealed class Unsubscribe_Tests : BaseTestClass
 {
     [TestMethod]
-    [ExpectedException(typeof(MqttClientDisconnectedException))]
-    public async Task Disconnect_While_Unsubscribing()
+    public Task Disconnect_While_Unsubscribing()
     {
-        using var testEnvironment = CreateTestEnvironment();
-        var server = await testEnvironment.StartServer();
+        return Assert.ThrowsExactlyAsync<MqttClientDisconnectedException>(async () =>
+        {
+            using var testEnvironment = CreateTestEnvironment();
+            var server = await testEnvironment.StartServer();
 
-        // The client will be disconnected directly after subscribing!
-        server.ClientUnsubscribedTopicAsync += ev => server.DisconnectClientAsync(ev.ClientId);
+            // The client will be disconnected directly after subscribing!
+            server.ClientUnsubscribedTopicAsync += ev => server.DisconnectClientAsync(ev.ClientId);
 
-        var client = await testEnvironment.ConnectClient();
-        await client.SubscribeAsync("#");
-        await client.UnsubscribeAsync("#");
+            var client = await testEnvironment.ConnectClient();
+            await client.SubscribeAsync("#");
+            await client.UnsubscribeAsync("#");
+        });
     }
 
     [TestMethod]

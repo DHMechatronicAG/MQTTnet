@@ -3,9 +3,6 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Collections.Concurrent;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Packets;
 using MQTTnet.Protocol;
 using MQTTnet.Server;
@@ -16,9 +13,14 @@ namespace MQTTnet.Tests.Server;
 
 // ReSharper disable InconsistentNaming
 [TestClass]
-public sealed class MqttSubscriptionsManager_Tests : BaseTestClass
+public sealed class MqttSubscriptionsManager_Tests : BaseTestClass, IDisposable
 {
     MqttClientSubscriptionsManager _subscriptionsManager;
+
+    public void Dispose()
+    {
+        _subscriptionsManager?.Dispose();
+    }
 
     [TestMethod]
     public async Task MqttSubscriptionsManager_SubscribeAndUnsubscribeSingle()
@@ -46,7 +48,7 @@ public sealed class MqttSubscriptionsManager_Tests : BaseTestClass
         {
             TopicFilters =
             [
-                new() { Topic = "A/B/C", QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce }
+                new MqttTopicFilter { Topic = "A/B/C", QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce }
             ]
         };
 
@@ -54,7 +56,7 @@ public sealed class MqttSubscriptionsManager_Tests : BaseTestClass
 
         var result = CheckSubscriptions("A/B/C", MqttQualityOfServiceLevel.ExactlyOnce, "");
         Assert.IsTrue(result.IsSubscribed);
-        Assert.AreEqual(result.QualityOfServiceLevel, MqttQualityOfServiceLevel.AtMostOnce);
+        Assert.AreEqual(MqttQualityOfServiceLevel.AtMostOnce, result.QualityOfServiceLevel);
     }
 
     [TestMethod]
@@ -83,7 +85,7 @@ public sealed class MqttSubscriptionsManager_Tests : BaseTestClass
         var result = CheckSubscriptions("A/B/C", MqttQualityOfServiceLevel.AtMostOnce, "");
 
         Assert.IsTrue(result.IsSubscribed);
-        Assert.AreEqual(result.QualityOfServiceLevel, MqttQualityOfServiceLevel.AtMostOnce);
+        Assert.AreEqual(MqttQualityOfServiceLevel.AtMostOnce, result.QualityOfServiceLevel);
     }
 
     [TestMethod]
@@ -103,7 +105,7 @@ public sealed class MqttSubscriptionsManager_Tests : BaseTestClass
         var result = CheckSubscriptions("A/B/C", MqttQualityOfServiceLevel.ExactlyOnce, "");
 
         Assert.IsTrue(result.IsSubscribed);
-        Assert.AreEqual(result.QualityOfServiceLevel, MqttQualityOfServiceLevel.AtLeastOnce);
+        Assert.AreEqual(MqttQualityOfServiceLevel.AtLeastOnce, result.QualityOfServiceLevel);
     }
 
     [TestMethod]
@@ -178,6 +180,48 @@ public sealed class MqttSubscriptionsManager_Tests : BaseTestClass
         CheckIsNotSubscribed("house/2/room/bed");
     }
 
+    [TestInitialize]
+    public void TestInitialize()
+    {
+        var logger = new TestLogger();
+        var options = new MqttServerOptions();
+        var retainedMessagesManager = new MqttRetainedMessagesManager(new MqttServerEventContainer(), logger);
+        var eventContainer = new MqttServerEventContainer();
+        var clientSessionManager = new MqttClientSessionsManager(options, retainedMessagesManager, eventContainer, logger);
+
+        var session = new MqttSession(
+            new MqttConnectPacket
+            {
+                ClientId = ""
+            },
+            new ConcurrentDictionary<object, object>(),
+            options,
+            eventContainer,
+            retainedMessagesManager,
+            clientSessionManager);
+
+        _subscriptionsManager = new MqttClientSubscriptionsManager(session, new MqttServerEventContainer(), retainedMessagesManager, clientSessionManager);
+    }
+
+    void CheckIsNotSubscribed(string topic)
+    {
+        var result = CheckSubscriptions(topic, MqttQualityOfServiceLevel.AtMostOnce, "");
+        Assert.IsFalse(result.IsSubscribed);
+    }
+
+    void CheckIsSubscribed(string topic)
+    {
+        var result = CheckSubscriptions(topic, MqttQualityOfServiceLevel.AtMostOnce, "");
+        Assert.IsTrue(result.IsSubscribed);
+        Assert.AreEqual(MqttQualityOfServiceLevel.AtMostOnce, result.QualityOfServiceLevel);
+    }
+
+    CheckSubscriptionsResult CheckSubscriptions(string topic, MqttQualityOfServiceLevel applicationMessageQoSLevel, string senderClientId)
+    {
+        MqttTopicHash.Calculate(topic, out var topicHash, out _, out _);
+        return _subscriptionsManager.CheckSubscriptions(topic, topicHash, applicationMessageQoSLevel, senderClientId);
+    }
+
     async Task SubscribeToTopic(string topic)
     {
         var sp = new MqttSubscribePacket
@@ -188,42 +232,6 @@ public sealed class MqttSubscriptionsManager_Tests : BaseTestClass
             ]
         };
 
-        await _subscriptionsManager.Subscribe(sp, CancellationToken.None).ConfigureAwait(false);
-    }
-
-    void CheckIsSubscribed(string topic)
-    {
-        var result = CheckSubscriptions(topic, MqttQualityOfServiceLevel.AtMostOnce, "");
-        Assert.IsTrue(result.IsSubscribed);
-        Assert.AreEqual(result.QualityOfServiceLevel, MqttQualityOfServiceLevel.AtMostOnce);
-    }
-
-    void CheckIsNotSubscribed(string topic)
-    {
-        var result = CheckSubscriptions(topic, MqttQualityOfServiceLevel.AtMostOnce, "");
-        Assert.IsFalse(result.IsSubscribed);
-    }
-
-    [TestInitialize]
-    public void TestInitialize()
-    {
-        var logger = new TestLogger();
-        var options = new MqttServerOptions();
-        var retainedMessagesManager = new MqttRetainedMessagesManager(new MqttServerEventContainer(), logger);
-        var eventContainer = new MqttServerEventContainer();
-        var clientSessionManager = new MqttClientSessionsManager(options, retainedMessagesManager, eventContainer, logger);
-
-        var session = new MqttSession(new MqttConnectPacket
-        {
-            ClientId = ""
-        }, new ConcurrentDictionary<object, object>(), options, eventContainer, retainedMessagesManager, clientSessionManager);
-
-        _subscriptionsManager = new MqttClientSubscriptionsManager(session, new MqttServerEventContainer(), retainedMessagesManager, clientSessionManager);
-    }
-
-    CheckSubscriptionsResult CheckSubscriptions(string topic, MqttQualityOfServiceLevel applicationMessageQoSLevel, string senderClientId)
-    {
-        MqttTopicHash.Calculate(topic, out var topicHash, out _, out _);
-        return _subscriptionsManager.CheckSubscriptions(topic, topicHash, applicationMessageQoSLevel, senderClientId);
+        await _subscriptionsManager.Subscribe(sp, CancellationToken.None);
     }
 }

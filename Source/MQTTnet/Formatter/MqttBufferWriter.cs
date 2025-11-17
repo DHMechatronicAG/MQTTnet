@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
 using System.Runtime.CompilerServices;
 using System.Text;
 using MQTTnet.Exceptions;
@@ -19,7 +18,6 @@ namespace MQTTnet.Formatter;
 /// </summary>
 public sealed class MqttBufferWriter
 {
-    const uint VariableByteIntegerMaxValue = 268435455;
     const int EncodedStringMaxLength = 65535;
 
     readonly int _maxBufferSize;
@@ -223,10 +221,7 @@ public sealed class MqttBufferWriter
             return;
         }
 
-        if (value > VariableByteIntegerMaxValue)
-        {
-            throw new MqttProtocolViolationException($"The specified value ({value}) is too large for a variable byte integer.");
-        }
+        MqttProtocolViolationException.ThrowIfVariableByteIntegerExceedsLimit(value);
 
         var size = 0;
         var x = value;

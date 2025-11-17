@@ -2,9 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Formatter;
 using MQTTnet.Packets;
 using MQTTnet.Protocol;
@@ -13,7 +10,7 @@ namespace MQTTnet.Tests.Server;
 
 // ReSharper disable InconsistentNaming
 [TestClass]
-public sealed class Retained_Messages_Tests : BaseTestClass
+public class Retained_Messages_Tests : BaseTestClass
 {
     [TestMethod]
     public async Task Clear_Retained_Message_With_Empty_Payload()
@@ -24,16 +21,16 @@ public sealed class Retained_Messages_Tests : BaseTestClass
         var c1 = await testEnvironment.ConnectClient();
 
         await c1.PublishAsync(new MqttApplicationMessageBuilder().WithTopic("retained").WithPayload(new byte[3]).WithRetainFlag().Build());
-        await c1.PublishAsync(new MqttApplicationMessageBuilder().WithTopic("retained").WithPayload(new byte[0]).WithRetainFlag().Build());
+        await c1.PublishAsync(new MqttApplicationMessageBuilder().WithTopic("retained").WithPayload([]).WithRetainFlag().Build());
 
         await c1.DisconnectAsync();
 
         var c2 = await testEnvironment.ConnectClient();
         var messageHandler = testEnvironment.CreateApplicationMessageHandler(c2);
 
-        await Task.Delay(200);
         await c2.SubscribeAsync(new MqttTopicFilter { Topic = "retained", QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce });
-        await Task.Delay(500);
+
+        await MediumTestDelay();
 
         messageHandler.AssertReceivedCountEquals(0);
     }
@@ -54,9 +51,9 @@ public sealed class Retained_Messages_Tests : BaseTestClass
         var c2 = await testEnvironment.ConnectClient();
         var messageHandler = testEnvironment.CreateApplicationMessageHandler(c2);
 
-        await Task.Delay(200);
         await c2.SubscribeAsync(new MqttTopicFilter { Topic = "retained", QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce });
-        await Task.Delay(500);
+
+        await MediumTestDelay();
 
         messageHandler.AssertReceivedCountEquals(0);
     }
@@ -82,7 +79,7 @@ public sealed class Retained_Messages_Tests : BaseTestClass
         var messageHandler = testEnvironment.CreateApplicationMessageHandler(c2);
         await c2.SubscribeAsync(new MqttTopicFilter { Topic = "retained", QualityOfServiceLevel = MqttQualityOfServiceLevel.AtLeastOnce });
 
-        await LongTestDelay();
+        await MediumTestDelay();
 
         messageHandler.AssertReceivedCountEquals(1);
 
@@ -110,7 +107,7 @@ public sealed class Retained_Messages_Tests : BaseTestClass
         var messageHandler = testEnvironment.CreateApplicationMessageHandler(c2);
         await c2.SubscribeAsync(new MqttTopicFilter { Topic = "retained", QualityOfServiceLevel = MqttQualityOfServiceLevel.ExactlyOnce });
 
-        await LongTestDelay();
+        await MediumTestDelay();
 
         messageHandler.AssertReceivedCountEquals(1);
 
@@ -131,7 +128,7 @@ public sealed class Retained_Messages_Tests : BaseTestClass
         var messageHandler = testEnvironment.CreateApplicationMessageHandler(c2);
         await c2.SubscribeAsync(new MqttTopicFilterBuilder().WithTopic("retained_other").Build());
 
-        await Task.Delay(500);
+        await MediumTestDelay();
 
         messageHandler.AssertReceivedCountEquals(0);
     }
@@ -178,10 +175,10 @@ public sealed class Retained_Messages_Tests : BaseTestClass
         var c2 = await testEnvironment.ConnectClient();
         var messageHandler = testEnvironment.CreateApplicationMessageHandler(c2);
 
-        await Task.Delay(200);
         // Using QoS 2 will lead to 1 instead because the publish was made with QoS level 1 (see 3.8.4 SUBSCRIBE Actions)!
         await c2.SubscribeAsync(new MqttTopicFilter { Topic = "retained", QualityOfServiceLevel = MqttQualityOfServiceLevel.ExactlyOnce });
-        await Task.Delay(500);
+
+        await MediumTestDelay();
 
         messageHandler.AssertReceivedCountEquals(1);
     }
@@ -247,5 +244,34 @@ public sealed class Retained_Messages_Tests : BaseTestClass
                 .Build());
 
         Assert.IsTrue(connectResult.RetainAvailable);
+    }
+
+    [TestMethod]
+    public async Task Skip_Enqueue_Of_Retained_Message()
+    {
+        using var testEnvironment = CreateTestEnvironment();
+
+        var server = await testEnvironment.StartServer();
+        server.InterceptingClientEnqueueAsync += e =>
+        {
+            e.AcceptEnqueue = false;
+
+            return Task.CompletedTask;
+        };
+
+        var c1 = await testEnvironment.ConnectClient();
+
+        await c1.PublishAsync(new MqttApplicationMessageBuilder().WithTopic("retained").WithPayload(new byte[3]).WithRetainFlag().Build());
+
+        await c1.DisconnectAsync();
+
+        var c2 = await testEnvironment.ConnectClient();
+        var messageHandler = testEnvironment.CreateApplicationMessageHandler(c2);
+
+        await c2.SubscribeAsync(new MqttTopicFilter { Topic = "retained", QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce });
+
+        await MediumTestDelay();
+
+        messageHandler.AssertReceivedCountEquals(0);
     }
 }

@@ -1,10 +1,5 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Packets;
 using MQTTnet.Protocol;
 using MQTTnet.Server;
@@ -14,7 +9,7 @@ using MQTTnet.Tests.Mockups;
 namespace MQTTnet.Tests.Server;
 
 [TestClass]
-public sealed class SubscriptionTopicHashTests
+public sealed class SubscriptionTopicHashTests : IDisposable
 {
     MqttSession _clientSession;
 
@@ -28,12 +23,7 @@ public sealed class SubscriptionTopicHashTests
         const int numPublishers = 5000;
         const int numTopicsPerPublisher = 10;
 
-        TopicGenerator.Generate(
-            numPublishers,
-            numTopicsPerPublisher,
-            out var topicsByPublisher,
-            out _,
-            out _);
+        TopicGenerator.Generate(numPublishers, numTopicsPerPublisher, out var topicsByPublisher, out _, out _);
 
         // There will be many 'similar' topics ending with, i.e. "sensor100", "sensor101", ...
         // Hash bucket depths should remain low.
@@ -75,7 +65,7 @@ public sealed class SubscriptionTopicHashTests
         Console.Write("Max bucket depth is " + maxBucketDepth);
 
         // for the test case the bucket depth should be less than 100
-        Assert.IsTrue(maxBucketDepth < 100, "Unexpected high topic hash bucket depth");
+        Assert.IsLessThan(100, maxBucketDepth, "Unexpected high topic hash bucket depth");
     }
 
 
@@ -87,6 +77,11 @@ public sealed class SubscriptionTopicHashTests
         CheckTopicHash("client1/+/level1/+", 0x65004A0000000000, 0xFF00FF00FFFFFFFF);
         CheckTopicHash("client1/building1/level1/#", 0x655D4A0000000000, 0xFFFFFF0000000000);
         CheckTopicHash("client1/+/level1/#", 0x65004A0000000000, 0xFF00FF0000000000);
+    }
+
+    public void Dispose()
+    {
+        _clientSession?.Dispose();
     }
 
     /// <summary>
@@ -162,11 +157,11 @@ public sealed class SubscriptionTopicHashTests
         {
             if (count < 7)
             {
-                Assert.AreNotEqual(h, 0, "checksum mismatch");
+                Assert.AreNotEqual(0, h, "checksum mismatch");
             }
             else
             {
-                Assert.AreEqual(h, 0, "checksum mismatch");
+                Assert.AreEqual(0, h, "checksum mismatch");
             }
 
             ++count;
@@ -179,11 +174,11 @@ public sealed class SubscriptionTopicHashTests
         {
             if (count < 7)
             {
-                Assert.AreEqual(h, 0xff, "mask mismatch");
+                Assert.AreEqual(0xff, h, "mask mismatch");
             }
             else
             {
-                Assert.AreEqual(h, 0, "last mask mismatch");
+                Assert.AreEqual(0, h, "last mask mismatch");
             }
 
             ++count;
@@ -223,7 +218,7 @@ public sealed class SubscriptionTopicHashTests
         var count = 0;
         foreach (var h in hashBytes)
         {
-            Assert.AreNotEqual(h, 0, "checksum mismatch");
+            Assert.AreNotEqual(0, h, "checksum mismatch");
             ++count;
         }
 
@@ -232,7 +227,7 @@ public sealed class SubscriptionTopicHashTests
         count = 0;
         foreach (var h in hashMaskBytes)
         {
-            Assert.AreEqual(h, 0xff, "mask mismatch");
+            Assert.AreEqual(0xff, h, "mask mismatch");
             ++count;
         }
     }
@@ -282,12 +277,12 @@ public sealed class SubscriptionTopicHashTests
         {
             if (count < 7)
             {
-                Assert.AreNotEqual(h, 0, "checksum mismatch");
+                Assert.AreNotEqual(0, h, "checksum mismatch");
             }
             else
             {
                 // wildcard position
-                Assert.AreEqual(h, 0, "checksum mismatch");
+                Assert.AreEqual(0, h, "checksum mismatch");
             }
 
             ++count;
@@ -300,11 +295,11 @@ public sealed class SubscriptionTopicHashTests
         {
             if (count < 7)
             {
-                Assert.AreEqual(h, 0xff, "mask mismatch");
+                Assert.AreEqual(0xff, h, "mask mismatch");
             }
             else
             {
-                Assert.AreEqual(h, 0, "last mask mismatch");
+                Assert.AreEqual(0, h, "last mask mismatch");
             }
 
             ++count;
@@ -325,25 +320,25 @@ public sealed class SubscriptionTopicHashTests
         Assert.IsTrue(topicHasWildcard, "Wildcard not detected");
 
         var hashBytes = GetBytes(topicHash);
-        Assert.AreNotEqual(hashBytes[0], 0, "checksum 0 mismatch");
-        Assert.AreNotEqual(hashBytes[1], 0, "checksum 1 mismatch");
-        Assert.AreNotEqual(hashBytes[2], 0, "checksum 2 mismatch");
-        Assert.AreEqual(hashBytes[3], 0, "checksum 3 mismatch");
-        Assert.AreEqual(hashBytes[4], 0, "checksum 4 mismatch");
-        Assert.AreEqual(hashBytes[5], 0, "checksum 5 mismatch");
-        Assert.AreEqual(hashBytes[6], 0, "checksum 6 mismatch");
-        Assert.AreEqual(hashBytes[7], 0, "checksum 7 mismatch");
+        Assert.AreNotEqual(0, hashBytes[0], "checksum 0 mismatch");
+        Assert.AreNotEqual(0, hashBytes[1], "checksum 1 mismatch");
+        Assert.AreNotEqual(0, hashBytes[2], "checksum 2 mismatch");
+        Assert.AreEqual(0, hashBytes[3], "checksum 3 mismatch");
+        Assert.AreEqual(0, hashBytes[4], "checksum 4 mismatch");
+        Assert.AreEqual(0, hashBytes[5], "checksum 5 mismatch");
+        Assert.AreEqual(0, hashBytes[6], "checksum 6 mismatch");
+        Assert.AreEqual(0, hashBytes[7], "checksum 7 mismatch");
 
         // The mask should have zeroes where the wildcard is and zero onward
         var hashMaskBytes = GetBytes(topicHashMask);
-        Assert.AreEqual(hashMaskBytes[0], 0xff, "mask 0 mismatch");
-        Assert.AreEqual(hashMaskBytes[1], 0xff, "mask 1 mismatch");
-        Assert.AreEqual(hashMaskBytes[2], 0xff, "mask 2 mismatch");
-        Assert.AreEqual(hashMaskBytes[3], 0, "mask 3 mismatch");
-        Assert.AreEqual(hashMaskBytes[4], 0, "mask 4 mismatch");
-        Assert.AreEqual(hashMaskBytes[5], 0, "mask 5 mismatch");
-        Assert.AreEqual(hashMaskBytes[6], 0, "mask 6 mismatch");
-        Assert.AreEqual(hashMaskBytes[7], 0, "mask 7 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[0], "mask 0 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[1], "mask 1 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[2], "mask 2 mismatch");
+        Assert.AreEqual(0x0, hashMaskBytes[3], "mask 3 mismatch");
+        Assert.AreEqual(0x0, hashMaskBytes[4], "mask 4 mismatch");
+        Assert.AreEqual(0x0, hashMaskBytes[5], "mask 5 mismatch");
+        Assert.AreEqual(0x0, hashMaskBytes[6], "mask 6 mismatch");
+        Assert.AreEqual(0x0, hashMaskBytes[7], "mask 7 mismatch");
     }
 
     [TestMethod]
@@ -359,27 +354,26 @@ public sealed class SubscriptionTopicHashTests
 
         Assert.IsFalse(topicHasWildcard, "Wildcard detected when not wildcard present");
 
-
         var hashBytes = GetBytes(topicHash);
-        Assert.AreNotEqual(hashBytes[0], 0, "checksum 0 mismatch");
-        Assert.AreNotEqual(hashBytes[1], 0, "checksum 1 mismatch");
-        Assert.AreNotEqual(hashBytes[2], 0, "checksum 2 mismatch");
-        Assert.AreNotEqual(hashBytes[3], 0, "checksum 3 mismatch");
-        Assert.AreEqual(hashBytes[4], 0, "checksum 4 mismatch");
-        Assert.AreEqual(hashBytes[5], 0, "checksum 5 mismatch");
-        Assert.AreEqual(hashBytes[6], 0, "checksum 6 mismatch");
-        Assert.AreEqual(hashBytes[7], 0, "checksum 7 mismatch");
+        Assert.AreNotEqual(0, hashBytes[0], "checksum 0 mismatch");
+        Assert.AreNotEqual(0, hashBytes[1], "checksum 1 mismatch");
+        Assert.AreNotEqual(0, hashBytes[2], "checksum 2 mismatch");
+        Assert.AreNotEqual(0, hashBytes[3], "checksum 3 mismatch");
+        Assert.AreEqual(0, hashBytes[4], "checksum 4 mismatch");
+        Assert.AreEqual(0, hashBytes[5], "checksum 5 mismatch");
+        Assert.AreEqual(0, hashBytes[6], "checksum 6 mismatch");
+        Assert.AreEqual(0, hashBytes[7], "checksum 7 mismatch");
 
         // The mask should have ff
         var hashMaskBytes = GetBytes(topicHashMask);
-        Assert.AreEqual(hashMaskBytes[0], 0xff, "mask 0 mismatch");
-        Assert.AreEqual(hashMaskBytes[1], 0xff, "mask 1 mismatch");
-        Assert.AreEqual(hashMaskBytes[2], 0xff, "mask 2 mismatch");
-        Assert.AreEqual(hashMaskBytes[3], 0xff, "mask 3 mismatch");
-        Assert.AreEqual(hashMaskBytes[4], 0xff, "mask 4 mismatch");
-        Assert.AreEqual(hashMaskBytes[5], 0xff, "mask 5 mismatch");
-        Assert.AreEqual(hashMaskBytes[6], 0xff, "mask 6 mismatch");
-        Assert.AreEqual(hashMaskBytes[7], 0xff, "mask 7 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[0], "mask 0 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[1], "mask 1 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[2], "mask 2 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[3], "mask 3 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[4], "mask 4 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[5], "mask 5 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[6], "mask 6 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[7], "mask 7 mismatch");
     }
 
     [TestMethod]
@@ -420,7 +414,7 @@ public sealed class SubscriptionTopicHashTests
                 foreach (var t in topics)
                 {
                     // replace last letter with x
-                    topicsToFind.Add(t.Substring(0, t.Length - 1) + "x");
+                    topicsToFind.Add(string.Concat(t.AsSpan(0, t.Length - 1), "x"));
                 }
 
                 matchCount = CheckTopicSubscriptions(_clientSession, topicsToFind, "No Wildcard No Match (Replace X)");
@@ -453,28 +447,28 @@ public sealed class SubscriptionTopicHashTests
         Assert.IsTrue(topicHasWildcard, "Wildcard not detected");
 
         var hashBytes = GetBytes(topicHash);
-        Assert.AreNotEqual(hashBytes[0], 0, "checksum 0 mismatch");
-        Assert.AreNotEqual(hashBytes[1], 0, "checksum 1 mismatch");
-        Assert.AreEqual(hashBytes[2], 0, "checksum 2 mismatch");
-        Assert.AreNotEqual(hashBytes[3], 0, "checksum 3 mismatch");
-        Assert.AreEqual(hashBytes[4], 0, "checksum 4 mismatch");
-        Assert.AreEqual(hashBytes[5], 0, "checksum 5 mismatch");
-        Assert.AreEqual(hashBytes[6], 0, "checksum 6 mismatch");
-        Assert.AreEqual(hashBytes[7], 0, "checksum 7 mismatch");
+        Assert.AreNotEqual(0, hashBytes[0], "checksum 0 mismatch");
+        Assert.AreNotEqual(0, hashBytes[1], "checksum 1 mismatch");
+        Assert.AreEqual(0, hashBytes[2], "checksum 2 mismatch");
+        Assert.AreNotEqual(0, hashBytes[3], "checksum 3 mismatch");
+        Assert.AreEqual(0, hashBytes[4], "checksum 4 mismatch");
+        Assert.AreEqual(0, hashBytes[5], "checksum 5 mismatch");
+        Assert.AreEqual(0, hashBytes[6], "checksum 6 mismatch");
+        Assert.AreEqual(0, hashBytes[7], "checksum 7 mismatch");
 
         // The mask should have zeroes where the wildcard and ff at the end
         var hashMaskBytes = GetBytes(topicHashMask);
-        Assert.AreEqual(hashMaskBytes[0], 0xff, "mask 0 mismatch");
-        Assert.AreEqual(hashMaskBytes[1], 0xff, "mask 1 mismatch");
-        Assert.AreEqual(hashMaskBytes[2], 0, "mask 2 mismatch");
-        Assert.AreEqual(hashMaskBytes[3], 0xff, "mask 3 mismatch");
-        Assert.AreEqual(hashMaskBytes[4], 0xff, "mask 4 mismatch");
-        Assert.AreEqual(hashMaskBytes[5], 0xff, "mask 5 mismatch");
-        Assert.AreEqual(hashMaskBytes[6], 0xff, "mask 6 mismatch");
-        Assert.AreEqual(hashMaskBytes[7], 0xff, "mask 7 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[0], "mask 0 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[1], "mask 1 mismatch");
+        Assert.AreEqual(0x0, hashMaskBytes[2], "mask 2 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[3], "mask 3 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[4], "mask 4 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[5], "mask 5 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[6], "mask 6 mismatch");
+        Assert.AreEqual(0xff, hashMaskBytes[7], "mask 7 mismatch");
     }
 
-    void CheckTopicHash(string topic, ulong expectedHash, ulong expectedHashMask)
+    static void CheckTopicHash(string topic, ulong expectedHash, ulong expectedHashMask)
     {
         MqttTopicHash.Calculate(topic, out var topicHash, out var hashMask, out _);
 
@@ -487,7 +481,7 @@ public sealed class SubscriptionTopicHashTests
         Assert.AreEqual(expectedHashMask, hashMask, "Topic hash mask not as expected");
     }
 
-    int CheckTopicSubscriptions(MqttSession clientSession, List<string> topicsToFind, string subject)
+    static int CheckTopicSubscriptions(MqttSession clientSession, List<string> topicsToFind, string subject)
     {
         var matchCount = 0;
 
@@ -523,7 +517,7 @@ public sealed class SubscriptionTopicHashTests
         return matchCount;
     }
 
-    byte[] GetBytes(ulong value)
+    static byte[] GetBytes(ulong value)
     {
         var bytes = BitConverter.GetBytes(value);
         // Ensure that highest byte comes first for comparison left to right
@@ -541,12 +535,7 @@ public sealed class SubscriptionTopicHashTests
         const int numPublishers = 1;
         const int numTopicsPerPublisher = 10000;
 
-        TopicGenerator.Generate(
-            numPublishers,
-            numTopicsPerPublisher,
-            out var topicsByPublisher,
-            out var singleWildcardTopicsByPublisher,
-            out var multiWildcardTopicsByPublisher);
+        TopicGenerator.Generate(numPublishers, numTopicsPerPublisher, out var topicsByPublisher, out var singleWildcardTopicsByPublisher, out var multiWildcardTopicsByPublisher);
 
         var topics = topicsByPublisher.FirstOrDefault().Value;
         var singleWildcardTopics = singleWildcardTopicsByPublisher.FirstOrDefault().Value;
@@ -558,7 +547,13 @@ public sealed class SubscriptionTopicHashTests
         var eventContainer = new MqttServerEventContainer();
         var retainedMessagesManager = new MqttRetainedMessagesManager(eventContainer, logger);
         var sessionManager = new MqttClientSessionsManager(serverOptions, retainedMessagesManager, eventContainer, logger);
-        _clientSession = new MqttSession(new MqttConnectPacket{ ClientId = clientId }, new Dictionary<object, object>(), serverOptions, eventContainer, retainedMessagesManager, sessionManager);
+        _clientSession = new MqttSession(
+            new MqttConnectPacket { ClientId = clientId },
+            new Dictionary<object, object>(),
+            serverOptions,
+            eventContainer,
+            retainedMessagesManager,
+            sessionManager);
 
         List<string> topicsToSubscribe;
 

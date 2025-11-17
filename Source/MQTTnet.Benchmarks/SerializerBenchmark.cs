@@ -4,10 +4,7 @@
 
 using BenchmarkDotNet.Attributes;
 using MQTTnet.Packets;
-using System;
 using System.Security.Cryptography.X509Certificates;
-using System.Threading;
-using System.Threading.Tasks;
 using MQTTnet.Adapter;
 using MQTTnet.Channel;
 using MQTTnet.Formatter;
@@ -26,7 +23,7 @@ public class SerializerBenchmark : BaseBenchmark
 {
     MqttPacket _packet;
     ArraySegment<byte> _serializedPacket;
-    IMqttPacketFormatter _serializer;
+    MqttV3PacketFormatter _serializer;
     MqttBufferWriter _bufferWriter;
 
     [GlobalSetup]
@@ -43,7 +40,7 @@ public class SerializerBenchmark : BaseBenchmark
     }
 
     [Benchmark]
-    public void Serialize_10000_Messages()
+    public void Serialize10000Messages()
     {
         for (var i = 0; i < 10000; i++)
         {
@@ -53,7 +50,7 @@ public class SerializerBenchmark : BaseBenchmark
     }
 
     [Benchmark]
-    public void Deserialize_10000_Messages()
+    public void Deserialize10000Messages()
     {
         var channel = new BenchmarkMqttChannel(_serializedPacket);
         var reader = new MqttChannelAdapter(channel, new MqttPacketFormatterAdapter(new MqttBufferWriter(4096, 65535)), new MqttNetEventLogger());
@@ -66,7 +63,7 @@ public class SerializerBenchmark : BaseBenchmark
         }
     }
 
-    class BenchmarkMqttChannel : IMqttChannel
+    sealed class BenchmarkMqttChannel : IMqttChannel
     {
         readonly ArraySegment<byte> _buffer;
         int _position;
@@ -79,7 +76,9 @@ public class SerializerBenchmark : BaseBenchmark
 
         public EndPoint RemoteEndPoint { get; set; }
 
-        public bool IsSecureConnection { get; } = false;
+        public EndPoint LocalEndPoint { get; set; }
+
+        public bool IsSecureConnection { get; }
 
         public X509Certificate2 ClientCertificate { get; set; }
 

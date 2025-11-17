@@ -2,13 +2,12 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 
 namespace MQTTnet.AspNetCore;
 
-public sealed class SocketReceiver
+public sealed class SocketReceiver : IDisposable
 {
     readonly SocketAwaitable _awaitable;
     readonly SocketAsyncEventArgs _eventArgs = new();
@@ -32,5 +31,10 @@ public sealed class SocketReceiver
         }
 
         return _awaitable;
+    }
+
+    public void Dispose()
+    {
+        _eventArgs.Dispose();
     }
 }

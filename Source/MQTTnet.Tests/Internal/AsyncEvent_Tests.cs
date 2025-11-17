@@ -2,10 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Internal;
 
 namespace MQTTnet.Tests.Internal;
@@ -82,7 +78,7 @@ public sealed class AsyncEvent_Tests
         var testClass = new TestClass();
         testClass.TestEventAsync += OnTestEventAsync;
 
-        Assert.AreEqual(true, testClass.HasTestHandlers);
+        Assert.IsTrue(testClass.HasTestHandlers);
     }
 
     [TestMethod]
@@ -90,7 +86,7 @@ public sealed class AsyncEvent_Tests
     {
         var testClass = new TestClass();
 
-        Assert.AreEqual(false, testClass.HasTestHandlers);
+        Assert.IsFalse(testClass.HasTestHandlers);
     }
 
     [TestMethod]
@@ -100,7 +96,7 @@ public sealed class AsyncEvent_Tests
         testClass.TestEventAsync += OnTestEventAsync;
         testClass.TestEventAsync -= OnTestEventAsync;
 
-        Assert.AreEqual(false, testClass.HasTestHandlers);
+        Assert.IsFalse(testClass.HasTestHandlers);
     }
 
     void OnTestEvent(EventArgs arg)

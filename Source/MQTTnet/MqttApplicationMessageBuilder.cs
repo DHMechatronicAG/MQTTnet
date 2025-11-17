@@ -2,11 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using MQTTnet.Exceptions;
@@ -21,7 +17,6 @@ public sealed class MqttApplicationMessageBuilder
     string _contentType;
     byte[] _correlationData;
     uint _messageExpiryInterval;
-
     MqttPayloadFormatIndicator _payloadFormatIndicator;
     ReadOnlySequence<byte> _payload;
     MqttQualityOfServiceLevel _qualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce;
@@ -84,6 +79,8 @@ public sealed class MqttApplicationMessageBuilder
     /// </summary>
     public MqttApplicationMessageBuilder WithMessageExpiryInterval(uint messageExpiryInterval)
     {
+        // No validation required because this is a 4 byte integer!
+
         _messageExpiryInterval = messageExpiryInterval;
         return this;
     }
@@ -228,9 +225,11 @@ public sealed class MqttApplicationMessageBuilder
     /// </summary>
     public MqttApplicationMessageBuilder WithSubscriptionIdentifier(uint subscriptionIdentifier)
     {
+        MqttProtocolViolationException.ThrowIfVariableByteIntegerExceedsLimit(subscriptionIdentifier);
+
         if (_subscriptionIdentifiers == null)
         {
-            _subscriptionIdentifiers = new List<uint>();
+            _subscriptionIdentifiers = [];
         }
 
         _subscriptionIdentifiers.Add(subscriptionIdentifier);

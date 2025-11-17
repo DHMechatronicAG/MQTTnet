@@ -2,9 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Microsoft.AspNetCore.Http;
 
 namespace MQTTnet.AspNetCore;
@@ -29,6 +26,6 @@ public static class MqttSubProtocolSelector
         ArgumentNullException.ThrowIfNull(requestedSubProtocolValues);
 
         // Order the protocols to also match "mqtt", "mqttv-3.1", "mqttv-3.11" etc.
-        return requestedSubProtocolValues.OrderByDescending(p => p.Length).FirstOrDefault(p => p.ToLower().StartsWith("mqtt"));
+        return requestedSubProtocolValues.OrderByDescending(p => p.Length).FirstOrDefault(p => p.ToLowerInvariant().StartsWith("mqtt", StringComparison.InvariantCulture));
     }
 }

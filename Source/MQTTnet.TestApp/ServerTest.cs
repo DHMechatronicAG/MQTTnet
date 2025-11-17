@@ -2,11 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Text;
-using System.Threading.Tasks;
 using MQTTnet.Diagnostics.Logger;
 using MQTTnet.Internal;
 using MQTTnet.Protocol;
@@ -129,12 +125,12 @@ public static class ServerTest
 
             mqttServer.InterceptingSubscriptionAsync += e =>
             {
-                if (e.TopicFilter.Topic.StartsWith("admin/foo/bar") && e.ClientId != "theAdmin")
+                if (e.TopicFilter.Topic.StartsWith("admin/foo/bar", StringComparison.InvariantCulture) && e.ClientId != "theAdmin")
                 {
                     e.Response.ReasonCode = MqttSubscribeReasonCode.ImplementationSpecificError;
                 }
 
-                if (e.TopicFilter.Topic.StartsWith("the/secret/stuff") && e.ClientId != "Imperator")
+                if (e.TopicFilter.Topic.StartsWith("the/secret/stuff", StringComparison.InvariantCulture) && e.ClientId != "Imperator")
                 {
                     e.Response.ReasonCode = MqttSubscribeReasonCode.ImplementationSpecificError;
                     e.CloseConnection = true;

@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Exceptions;
 using MQTTnet.Protocol;
 
@@ -43,16 +42,14 @@ public class MqttTopicValidatorSubscribe_Tests
     }
 
     [TestMethod]
-    [ExpectedException(typeof(MqttProtocolViolationException))]
     public void Invalid_Topic_Hash_In_Between()
     {
-        MqttTopicValidator.ThrowIfInvalidSubscribe("/a/#/c");
+       Assert.ThrowsExactly<MqttProtocolViolationException>(() => MqttTopicValidator.ThrowIfInvalidSubscribe("/a/#/c"));
     }
 
     [TestMethod]
-    [ExpectedException(typeof(MqttProtocolViolationException))]
     public void Invalid_Topic_Empty()
     {
-        MqttTopicValidator.ThrowIfInvalidSubscribe(string.Empty);
+        Assert.ThrowsExactly<MqttProtocolViolationException>(() => MqttTopicValidator.ThrowIfInvalidSubscribe(string.Empty));
     }
 }

@@ -2,9 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
-using System.IO;
-using System.Threading;
 using BenchmarkDotNet.Attributes;
 using MQTTnet.Adapter;
 using MQTTnet.Diagnostics.Logger;
@@ -15,7 +12,7 @@ using MQTTnet.Tests.Mockups;
 namespace MQTTnet.Benchmarks;
 
 [MemoryDiagnoser]
-public sealed class ChannelAdapterBenchmark : BaseBenchmark
+public sealed class ChannelAdapterBenchmark : BaseBenchmark, IDisposable
 {
     MqttChannelAdapter _channelAdapter;
     int _iterations;
@@ -85,5 +82,11 @@ public sealed class ChannelAdapterBenchmark : BaseBenchmark
         }
 
         return buffer.ToArray();
+    }
+
+    public void Dispose()
+    {
+        _channelAdapter?.Dispose();
+        _stream?.Dispose();
     }
 }

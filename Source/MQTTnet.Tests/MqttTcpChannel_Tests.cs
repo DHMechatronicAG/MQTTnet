@@ -2,12 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Implementations;
 
 namespace MQTTnet.Tests;
@@ -45,7 +41,7 @@ public class MqttTcpChannel_Tests
             using var clientSocket = new CrossPlatformSocket(AddressFamily.InterNetwork, ProtocolType.Tcp);
             await clientSocket.ConnectAsync(remoteEndPoint, CancellationToken.None);
 
-            var tcpChannel = new MqttTcpChannel(clientSocket.GetStream(), remoteEndPoint, null);
+            var tcpChannel = new MqttTcpChannel(clientSocket.GetStream(), new DnsEndPoint("localhost", 50000), remoteEndPoint, null);
 
             await Task.Delay(100, ct.Token);
 
@@ -71,7 +67,7 @@ public class MqttTcpChannel_Tests
             }
             catch (Exception exception)
             {
-                Assert.IsInstanceOfType(exception, typeof(SocketException));
+                Assert.IsInstanceOfType<SocketException>(exception);
                 Assert.AreEqual(SocketError.OperationAborted, ((SocketException)exception).SocketErrorCode);
             }
         }

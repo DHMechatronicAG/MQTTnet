@@ -2,13 +2,9 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Net;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using MQTTnet.Protocol;
 using MQTTnet.Server;
 
@@ -204,7 +200,7 @@ public static class PerformanceTest
         };
     }
 
-    static Task PublishSingleMessage(IMqttClient client, MqttApplicationMessage applicationMessage, ref int count)
+    static Task<MqttClientPublishResult> PublishSingleMessage(IMqttClient client, MqttApplicationMessage applicationMessage, ref int count)
     {
         Interlocked.Increment(ref count);
         return Task.Run(() => client.PublishAsync(applicationMessage));

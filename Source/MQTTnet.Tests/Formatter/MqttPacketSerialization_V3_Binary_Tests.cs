@@ -2,11 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
 using System.Buffers;
-using System.IO;
-using System.Threading;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Adapter;
 using MQTTnet.Diagnostics.Logger;
 using MQTTnet.Exceptions;
@@ -284,13 +280,13 @@ public sealed class MqttPacketSerialization_V3_Binary_Tests
 
         var adapter = new MqttPacketFormatterAdapter(new MqttBufferWriter(4096, 65535));
 
-        var ex = Assert.ThrowsException<MqttProtocolViolationException>(
+        var ex = Assert.ThrowsExactly<MqttProtocolViolationException>(
             () => DeserializeAndDetectVersion(adapter, WriterFactory().AddMqttHeader(MqttControlPacketType.Connect, [])));
         Assert.AreEqual("CONNECT packet must have at least 7 bytes.", ex.Message);
-        ex = Assert.ThrowsException<MqttProtocolViolationException>(
+        ex = Assert.ThrowsExactly<MqttProtocolViolationException>(
             () => DeserializeAndDetectVersion(adapter, WriterFactory().AddMqttHeader(MqttControlPacketType.Connect, new byte[7])));
         Assert.AreEqual("Protocol '' not supported.", ex.Message);
-        ex = Assert.ThrowsException<MqttProtocolViolationException>(
+        ex = Assert.ThrowsExactly<MqttProtocolViolationException>(
             () => DeserializeAndDetectVersion(adapter, WriterFactory().AddMqttHeader(MqttControlPacketType.Connect, [255, 255, 0, 0, 0, 0, 0])));
         Assert.AreEqual("Expected at least 65537 bytes but there are only 7 bytes", ex.Message);
     }
@@ -551,7 +547,7 @@ public sealed class MqttPacketSerialization_V3_Binary_Tests
     }
 
 
-    void DeserializeAndCompare(MqttPacket packet, string expectedBase64Value, MqttProtocolVersion protocolVersion = MqttProtocolVersion.V311)
+    static void DeserializeAndCompare(MqttPacket packet, string expectedBase64Value, MqttProtocolVersion protocolVersion = MqttProtocolVersion.V311)
     {
         var writer = WriterFactory();
 

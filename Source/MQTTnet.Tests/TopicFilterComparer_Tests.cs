@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Server.Internal;
 
 namespace MQTTnet.Tests;
@@ -157,7 +156,7 @@ public sealed class MqttTopicFilterComparer_Tests
         if (expectedResult == MqttTopicFilterCompareResult.IsMatch)
         {
             // If it matches then the hash evaluation should also indicate a match
-            Assert.IsTrue((topicHash & filterTopicHashMask) == filterTopicHash, "Incorrect topic hash (is equal)");
+            Assert.AreEqual(topicHash & filterTopicHashMask, filterTopicHash, "Incorrect topic hash (is equal)");
         }
     }
 }

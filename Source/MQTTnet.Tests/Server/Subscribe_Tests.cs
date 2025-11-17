@@ -2,11 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Globalization;
 using MQTTnet.Exceptions;
 using MQTTnet.Formatter;
 using MQTTnet.Internal;
@@ -41,16 +37,16 @@ public sealed class Subscribe_Tests : BaseTestClass
     public async Task Subscription_Roundtrip(string topic, string filter, bool shouldWork)
     {
         using var testEnvironment = CreateTestEnvironment();
-        await testEnvironment.StartServer().ConfigureAwait(false);
+        await testEnvironment.StartServer();
 
         var receiver = await testEnvironment.ConnectClient();
-        await receiver.SubscribeAsync(filter).ConfigureAwait(false);
+        await receiver.SubscribeAsync(filter);
         var receivedMessages = receiver.TrackReceivedMessages();
 
         var sender = await testEnvironment.ConnectClient();
-        await sender.PublishStringAsync(topic, "PAYLOAD").ConfigureAwait(false);
+        await sender.PublishStringAsync(topic, "PAYLOAD");
 
-        await LongTestDelay().ConfigureAwait(false);
+        await LongTestDelay();
 
         if (shouldWork)
         {
@@ -109,17 +105,19 @@ public sealed class Subscribe_Tests : BaseTestClass
     }
 
     [TestMethod]
-    [ExpectedException(typeof(MqttClientDisconnectedException))]
-    public async Task Disconnect_While_Subscribing()
+    public Task Disconnect_While_Subscribing()
     {
-        using var testEnvironment = CreateTestEnvironment();
-        var server = await testEnvironment.StartServer();
+        return Assert.ThrowsExactlyAsync<MqttClientDisconnectedException>(async () =>
+        {
+            using var testEnvironment = CreateTestEnvironment();
+            var server = await testEnvironment.StartServer();
 
-        // The client will be disconnected directly after subscribing!
-        server.ClientSubscribedTopicAsync += ev => server.DisconnectClientAsync(ev.ClientId);
+            // The client will be disconnected directly after subscribing!
+            server.ClientSubscribedTopicAsync += ev => server.DisconnectClientAsync(ev.ClientId);
 
-        var client = await testEnvironment.ConnectClient();
-        await client.SubscribeAsync("#");
+            var client = await testEnvironment.ConnectClient();
+            await client.SubscribeAsync("#");
+        });
     }
 
     [TestMethod]
@@ -141,7 +139,7 @@ public sealed class Subscribe_Tests : BaseTestClass
 
         await LongTestDelay();
 
-        Assert.AreEqual(1, receivedMessages.ReceivedEventArgs.Count);
+        Assert.HasCount(1, receivedMessages.ReceivedEventArgs);
     }
 
     [TestMethod]
@@ -200,7 +198,7 @@ public sealed class Subscribe_Tests : BaseTestClass
 
         var response = await client.SubscribeAsync(subscribeOptions);
 
-        Assert.AreEqual(subscribeOptions.TopicFilters.Count, response.Items.Count);
+        Assert.HasCount(subscribeOptions.TopicFilters.Count, response.Items);
     }
 
     [TestMethod]
@@ -220,9 +218,9 @@ public sealed class Subscribe_Tests : BaseTestClass
 
         for (var i = 0; i < 500; i++)
         {
-            var so = new MqttClientSubscribeOptionsBuilder().WithTopicFilter(i.ToString()).Build();
+            var so = new MqttClientSubscribeOptionsBuilder().WithTopicFilter(i.ToString(CultureInfo.InvariantCulture)).Build();
 
-            await c1.SubscribeAsync(so).ConfigureAwait(false);
+            await c1.SubscribeAsync(so);
 
             await Task.Delay(10);
         }
@@ -232,9 +230,9 @@ public sealed class Subscribe_Tests : BaseTestClass
         var messageBuilder = new MqttApplicationMessageBuilder();
         for (var i = 0; i < 500; i++)
         {
-            messageBuilder.WithTopic(i.ToString());
+            messageBuilder.WithTopic(i.ToString(CultureInfo.InvariantCulture));
 
-            await c2.PublishAsync(messageBuilder.Build()).ConfigureAwait(false);
+            await c2.PublishAsync(messageBuilder.Build());
 
             await Task.Delay(10);
         }
@@ -262,19 +260,19 @@ public sealed class Subscribe_Tests : BaseTestClass
         var optionsBuilder = new MqttClientSubscribeOptionsBuilder();
         for (var i = 0; i < 500; i++)
         {
-            optionsBuilder.WithTopicFilter(i.ToString());
+            optionsBuilder.WithTopicFilter(i.ToString(CultureInfo.InvariantCulture));
         }
 
-        await c1.SubscribeAsync(optionsBuilder.Build()).ConfigureAwait(false);
+        await c1.SubscribeAsync(optionsBuilder.Build());
 
         var c2 = await testEnvironment.ConnectClient();
 
         var messageBuilder = new MqttApplicationMessageBuilder();
         for (var i = 0; i < 500; i++)
         {
-            messageBuilder.WithTopic(i.ToString());
+            messageBuilder.WithTopic(i.ToString(CultureInfo.InvariantCulture));
 
-            await c2.PublishAsync(messageBuilder.Build()).ConfigureAwait(false);
+            await c2.PublishAsync(messageBuilder.Build());
         }
 
         SpinWait.SpinUntil(() => receivedMessagesCount == 500, TimeSpan.FromSeconds(20));
@@ -307,15 +305,15 @@ public sealed class Subscribe_Tests : BaseTestClass
 
         await c2.PublishStringAsync("a");
         await Task.Delay(100);
-        Assert.AreEqual(receivedMessagesCount, 1);
+        Assert.AreEqual(1, receivedMessagesCount);
 
         await c2.PublishStringAsync("b");
         await Task.Delay(100);
-        Assert.AreEqual(receivedMessagesCount, 2);
+        Assert.AreEqual(2, receivedMessagesCount);
 
         await c2.PublishStringAsync("c");
         await Task.Delay(100);
-        Assert.AreEqual(receivedMessagesCount, 3);
+        Assert.AreEqual(3, receivedMessagesCount);
     }
 
     [TestMethod]
@@ -339,15 +337,15 @@ public sealed class Subscribe_Tests : BaseTestClass
 
         await c2.PublishStringAsync("a");
         await Task.Delay(100);
-        Assert.AreEqual(receivedMessagesCount, 1);
+        Assert.AreEqual(1, receivedMessagesCount);
 
         await c2.PublishStringAsync("b");
         await Task.Delay(100);
-        Assert.AreEqual(receivedMessagesCount, 2);
+        Assert.AreEqual(2, receivedMessagesCount);
 
         await c2.PublishStringAsync("c");
         await Task.Delay(100);
-        Assert.AreEqual(receivedMessagesCount, 3);
+        Assert.AreEqual(3, receivedMessagesCount);
     }
 
     [TestMethod]

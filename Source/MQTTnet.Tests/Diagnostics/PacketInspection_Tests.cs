@@ -2,11 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Formatter;
 using MQTTnet.Internal;
 
@@ -39,7 +34,7 @@ public sealed class PacketInspection_Tests : BaseTestClass
 
         await mqttClient.ConnectAsync(mqttClientOptions, CancellationToken.None);
 
-        Assert.AreEqual(2, packets.Count);
+        Assert.HasCount(2, packets);
         Assert.AreEqual("Outbound:ECwABE1RVFQEAgAPACBJbnNwZWN0X0NsaWVudF9QYWNrZXRzX0NMSUVOVF9JRA==", packets[0]); // CONNECT
         Assert.AreEqual("Inbound:IAIAAA==", packets[1]); // CONNACK
     }

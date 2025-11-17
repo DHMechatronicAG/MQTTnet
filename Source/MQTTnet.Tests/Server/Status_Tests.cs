@@ -2,9 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Formatter;
 using MQTTnet.Protocol;
 using MQTTnet.Server;
@@ -28,7 +25,7 @@ public sealed class Status_Tests : BaseTestClass
 
         var clientStatus = await server.GetClientsAsync();
 
-        Assert.AreEqual(1, clientStatus.Count);
+        Assert.HasCount(1, clientStatus);
         Assert.IsTrue(clientStatus.Any(s => s.Id == c1.Options.ClientId));
 
         await clientStatus[0].DisconnectAsync();
@@ -39,7 +36,7 @@ public sealed class Status_Tests : BaseTestClass
 
         clientStatus = await server.GetClientsAsync();
 
-        Assert.AreEqual(0, clientStatus.Count);
+        Assert.IsEmpty(clientStatus);
     }
 
     [TestMethod]
@@ -60,8 +57,8 @@ public sealed class Status_Tests : BaseTestClass
         var clientStatus = await server.GetClientsAsync();
         var sessionStatus = await server.GetSessionsAsync();
 
-        Assert.AreEqual(1, clientStatus.Count);
-        Assert.AreEqual(2, sessionStatus.Count);
+        Assert.HasCount(1, clientStatus);
+        Assert.HasCount(2, sessionStatus);
 
         await c2.DisconnectAsync();
 
@@ -70,8 +67,8 @@ public sealed class Status_Tests : BaseTestClass
         clientStatus = await server.GetClientsAsync();
         sessionStatus = await server.GetSessionsAsync();
 
-        Assert.AreEqual(0, clientStatus.Count);
-        Assert.AreEqual(2, sessionStatus.Count);
+        Assert.IsEmpty(clientStatus);
+        Assert.HasCount(2, sessionStatus);
     }
 
     [TestMethod]
@@ -93,8 +90,8 @@ public sealed class Status_Tests : BaseTestClass
         var clientStatus = await server.GetClientsAsync();
         var sessionStatus = await server.GetSessionsAsync();
 
-        Assert.AreEqual(1, clientStatus.Count);
-        Assert.AreEqual(2, sessionStatus.Count);
+        Assert.HasCount(1, clientStatus);
+        Assert.HasCount(2, sessionStatus);
 
         // The session expiry interval is mandatory for MQTT5.0.0 in order keep session!
         await c2.DisconnectAsync(sessionExpiryInterval: 60);
@@ -104,8 +101,8 @@ public sealed class Status_Tests : BaseTestClass
         clientStatus = await server.GetClientsAsync();
         sessionStatus = await server.GetSessionsAsync();
 
-        Assert.AreEqual(0, clientStatus.Count);
-        Assert.AreEqual(2, sessionStatus.Count);
+        Assert.IsEmpty(clientStatus);
+        Assert.HasCount(2, sessionStatus);
     }
 
     [TestMethod]
@@ -122,8 +119,8 @@ public sealed class Status_Tests : BaseTestClass
         var clientStatus = await server.GetClientsAsync();
         var sessionStatus = await server.GetSessionsAsync();
 
-        Assert.AreEqual(2, clientStatus.Count);
-        Assert.AreEqual(2, sessionStatus.Count);
+        Assert.HasCount(2, clientStatus);
+        Assert.HasCount(2, sessionStatus);
 
         Assert.IsTrue(clientStatus.Any(s => s.Id == c1.Options.ClientId));
         Assert.IsTrue(clientStatus.Any(s => s.Id == c2.Options.ClientId));
@@ -136,8 +133,8 @@ public sealed class Status_Tests : BaseTestClass
         clientStatus = await server.GetClientsAsync();
         sessionStatus = await server.GetSessionsAsync();
 
-        Assert.AreEqual(0, clientStatus.Count);
-        Assert.AreEqual(0, sessionStatus.Count);
+        Assert.IsEmpty(clientStatus);
+        Assert.IsEmpty(sessionStatus);
     }
 
     [TestMethod]

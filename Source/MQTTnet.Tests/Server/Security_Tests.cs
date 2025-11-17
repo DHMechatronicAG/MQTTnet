@@ -2,9 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Adapter;
 using MQTTnet.Exceptions;
 using MQTTnet.Internal;
@@ -14,8 +11,28 @@ namespace MQTTnet.Tests.Server;
 
 // ReSharper disable InconsistentNaming
 [TestClass]
-public sealed class Security_Tests : BaseTestClass
+public class Security_Tests : BaseTestClass
 {
+    [TestMethod]
+    public async Task Deny_Connection()
+    {
+        using var testEnvironment = CreateTestEnvironment();
+        testEnvironment.IgnoreClientLogErrors = true;
+
+        var server = await testEnvironment.StartServer();
+
+        server.ValidatingConnectionAsync += e =>
+        {
+            e.ReasonCode = MqttConnectReasonCode.NotAuthorized;
+            return CompletedTask.Instance;
+        };
+
+        var client = testEnvironment.CreateClient();
+        var response = await client.ConnectAsync(testEnvironment.CreateDefaultClientOptions());
+
+        Assert.AreEqual(MqttClientConnectResultCode.NotAuthorized, response.ResultCode);
+    }
+
     [TestMethod]
     public async Task Do_Not_Affect_Authorized_Clients()
     {
@@ -86,8 +103,8 @@ public sealed class Security_Tests : BaseTestClass
 
         await LongTestDelay();
 
-        Assert.AreEqual(3, publishedApplicationMessages.Count);
-        Assert.AreEqual(1, testEnvironment.Server.GetClientsAsync().GetAwaiter().GetResult().Count);
+        Assert.HasCount(3, publishedApplicationMessages);
+        Assert.HasCount(1, testEnvironment.Server.GetClientsAsync().GetAwaiter().GetResult());
     }
 
     [TestMethod]
@@ -123,8 +140,8 @@ public sealed class Security_Tests : BaseTestClass
 
         var clientOptions = new MqttClientOptionsBuilder().WithTcpServer("127.0.0.1", testEnvironment.ServerPort).WithCredentials(username, password).Build();
 
-        var ex = await Assert.ThrowsExceptionAsync<MqttConnectingFailedException>(async () => await client.ConnectAsync(clientOptions).ConfigureAwait(false));
-        Assert.IsInstanceOfType(ex.InnerException, typeof(MqttProtocolViolationException));
+        var ex = await Assert.ThrowsExactlyAsync<MqttConnectingFailedException>(async () => await client.ConnectAsync(clientOptions));
+        Assert.IsInstanceOfType<MqttProtocolViolationException>(ex.InnerException);
         Assert.AreEqual("Error while authenticating. If the User Name Flag is set to 0, the Password Flag MUST be set to 0 [MQTT-3.1.2-22].", ex.Message, false);
     }
 

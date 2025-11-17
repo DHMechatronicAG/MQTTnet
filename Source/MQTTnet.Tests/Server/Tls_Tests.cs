@@ -1,12 +1,7 @@
-using System;
-using System.Linq;
 using System.Net;
 using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Certificates;
 using MQTTnet.Formatter;
 using MQTTnet.Server;
@@ -165,7 +160,7 @@ public sealed class Tls_Tests : BaseTestClass
         Assert.AreEqual(4, firstClientReceivedCount);
         Assert.AreEqual(2, secondClientReceivedCount);
 
-        await server.StopAsync().ConfigureAwait(false);
+        await server.StopAsync();
     }
 
     static async Task<IMqttClient> ConnectClientAsync(TestEnvironment testEnvironment, Func<MqttClientCertificateValidationEventArgs, bool> certValidator)
@@ -180,7 +175,7 @@ public sealed class Tls_Tests : BaseTestClass
                 });
 
         var clientOptions = clientOptionsBuilder.Build();
-        return await testEnvironment.ConnectClient(clientOptions).ConfigureAwait(false);
+        return await testEnvironment.ConnectClient(clientOptions);
     }
 
     sealed class CertificateProvider : ICertificateProvider

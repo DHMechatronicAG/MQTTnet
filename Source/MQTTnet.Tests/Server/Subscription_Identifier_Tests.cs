@@ -2,8 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Formatter;
 
 namespace MQTTnet.Tests.Server;
@@ -48,7 +46,7 @@ public sealed class Subscription_Identifier_Tests : BaseTestClass
 
         applicationMessageHandler.AssertReceivedCountEquals(1);
 
-        Assert.IsTrue(applicationMessageHandler.ReceivedEventArgs[0].ApplicationMessage.SubscriptionIdentifiers.Contains(456));
+        Assert.Contains(456u, applicationMessageHandler.ReceivedEventArgs[0].ApplicationMessage.SubscriptionIdentifiers);
     }
 
     [TestMethod]
@@ -80,7 +78,7 @@ public sealed class Subscription_Identifier_Tests : BaseTestClass
 
         applicationMessageHandler.AssertReceivedCountEquals(1);
 
-        Assert.IsTrue(applicationMessageHandler.ReceivedEventArgs[0].ApplicationMessage.SubscriptionIdentifiers.Contains(456));
-        Assert.IsTrue(applicationMessageHandler.ReceivedEventArgs[0].ApplicationMessage.SubscriptionIdentifiers.Contains(789));
+        Assert.Contains(456u, applicationMessageHandler.ReceivedEventArgs[0].ApplicationMessage.SubscriptionIdentifiers);
+        Assert.Contains(789u, applicationMessageHandler.ReceivedEventArgs[0].ApplicationMessage.SubscriptionIdentifiers);
     }
 }

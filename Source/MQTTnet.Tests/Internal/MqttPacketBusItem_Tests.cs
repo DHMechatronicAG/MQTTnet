@@ -2,8 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MQTTnet.Internal;
 using MQTTnet.Packets;
 
@@ -30,14 +28,16 @@ public sealed class MqttPacketBusItem_Tests
     }
 
     [TestMethod]
-    [ExpectedException(typeof(TaskCanceledException))]
-    public async Task Wait_Packet_Bus_Item_After_Already_Canceled()
+    public Task Wait_Packet_Bus_Item_After_Already_Canceled()
     {
-        var item = new MqttPacketBusItem(new MqttPublishPacket());
+        return Assert.ThrowsExactlyAsync<TaskCanceledException>(async () =>
+        {
+            var item = new MqttPacketBusItem(new MqttPublishPacket());
 
-        // Finish the item before the actual
-        item.Cancel();
+            // Finish the item before the actual
+            item.Cancel();
 
-        await item.WaitAsync().ConfigureAwait(false);
+            await item.WaitAsync();
+        });
     }
 }

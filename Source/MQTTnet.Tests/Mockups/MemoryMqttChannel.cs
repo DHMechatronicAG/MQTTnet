@@ -5,11 +5,8 @@
 using MQTTnet.Channel;
 using MQTTnet.Internal;
 using System.Buffers;
-using System.IO;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace MQTTnet.Tests.Mockups;
 
@@ -29,7 +26,9 @@ public sealed class MemoryMqttChannel : IMqttChannel
 
     public EndPoint RemoteEndPoint { get; set; }
 
-    public bool IsSecureConnection { get; } = false;
+    public EndPoint LocalEndPoint { get; set; }
+
+    public bool IsSecureConnection { get; }
 
     public X509Certificate2 ClientCertificate { get; set; }
 
@@ -58,5 +57,6 @@ public sealed class MemoryMqttChannel : IMqttChannel
 
     public void Dispose()
     {
+        _stream.Dispose();
     }
 }

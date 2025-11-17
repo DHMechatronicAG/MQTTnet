@@ -2,24 +2,19 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Buffers;
+using System.Text;
+using MQTTnet.Formatter;
 using MQTTnet.Internal;
 using MQTTnet.Packets;
 using MQTTnet.Protocol;
 using MQTTnet.Server;
-using System;
-using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace MQTTnet.Tests.Server;
 
 // ReSharper disable InconsistentNaming
 [TestClass]
-public sealed class General_Tests : BaseTestClass
+public class General_Tests : BaseTestClass
 {
     Dictionary<string, bool> _connected;
 
@@ -63,7 +58,7 @@ public sealed class General_Tests : BaseTestClass
         await Task.Delay(500);
 
         var clientStatus = await server.GetClientsAsync();
-        Assert.AreEqual(0, clientStatus.Count);
+        Assert.IsEmpty(clientStatus);
 
         var client2 = await testEnvironment.ConnectClient(new MqttClientOptionsBuilder().WithClientId("b").WithCleanSession(false).WithSessionExpiryInterval(60));
         await client2.PublishStringAsync("x", "1");
@@ -76,30 +71,60 @@ public sealed class General_Tests : BaseTestClass
         clientStatus = await server.GetClientsAsync();
         var sessionStatus = await server.GetSessionsAsync();
 
-        Assert.AreEqual(0, clientStatus.Count);
-        Assert.AreEqual(2, sessionStatus.Count);
+        Assert.IsEmpty(clientStatus);
+        Assert.HasCount(2, sessionStatus);
 
         Assert.AreEqual(3, sessionStatus.First(s => s.Id == client1.Options.ClientId).PendingApplicationMessagesCount);
     }
 
     [TestMethod]
-    public async Task Deny_Connection()
+    public async Task Disconnect_Client_with_Reason()
     {
         using var testEnvironment = CreateTestEnvironment();
-        testEnvironment.IgnoreClientLogErrors = true;
+        var disconnectPacketReceived = false;
 
-        var server = await testEnvironment.StartServer();
+        string testClientId = null;
 
-        server.ValidatingConnectionAsync += e =>
+        await testEnvironment.StartServer();
+
+        testEnvironment.Server.ClientConnectedAsync += e =>
         {
-            e.ReasonCode = MqttConnectReasonCode.NotAuthorized;
+            testClientId = e.ClientId;
             return CompletedTask.Instance;
         };
 
         var client = testEnvironment.CreateClient();
-        var response = await client.ConnectAsync(testEnvironment.CreateDefaultClientOptions());
 
-        Assert.AreEqual(MqttClientConnectResultCode.NotAuthorized, response.ResultCode);
+        client.InspectPacketAsync += e =>
+        {
+            if (e.Buffer.Length > 0)
+            {
+                if (e.Buffer[0] == (byte)MqttControlPacketType.Disconnect << 4)
+                {
+                    disconnectPacketReceived = true;
+                }
+            }
+
+            return CompletedTask.Instance;
+        };
+
+        await client.ConnectAsync(new MqttClientOptionsBuilder().WithTcpServer("localhost", testEnvironment.ServerPort).WithProtocolVersion(MqttProtocolVersion.V311).Build());
+
+        await LongTestDelay();
+
+        // Test client should be connected now
+
+        Assert.IsNotNull(testClientId);
+
+        // Have the server disconnect the client with SessionTakenOver reason; no DISCONNECT should be sent to MQTT 3.1.1 clients
+
+        await testEnvironment.Server.DisconnectClientAsync(testClientId, MqttDisconnectReasonCode.SessionTakenOver);
+
+        await LongTestDelay();
+
+        // MQTT 3.1.1 client should not receive a disconnect packet
+
+        Assert.IsFalse(disconnectPacketReceived, "Disconnect packet received when none is expected");
     }
 
     [TestMethod]
@@ -150,6 +175,27 @@ public sealed class General_Tests : BaseTestClass
 
         // No 'n' in buffer!
         Assert.AreEqual("y", buffer.ToString());
+    }
+
+    [TestMethod]
+    public async Task Expose_Local_And_Remote_Endpoint()
+    {
+        using var testEnvironment = CreateTestEnvironment();
+        var server = await testEnvironment.StartServer();
+
+        ValidatingConnectionEventArgs eventArgs = null;
+        server.ValidatingConnectionAsync += e =>
+        {
+            eventArgs = e;
+            return Task.CompletedTask;
+        };
+
+        await testEnvironment.ConnectClient();
+
+        await Task.Delay(500);
+
+        Assert.AreEqual("0.0.0.0:" + testEnvironment.ServerPort, eventArgs.ChannelAdapter.LocalEndPoint.ToString());
+        Assert.StartsWith("127.0.0.1:", eventArgs.ChannelAdapter.RemoteEndPoint.ToString());
     }
 
     [TestMethod]
@@ -205,35 +251,34 @@ public sealed class General_Tests : BaseTestClass
             var testEnvironment2 = testEnvironment;
 
             tasks.Add(
-                Task.Run(
-                    async () =>
+                Task.Run(async () =>
+                {
+                    try
                     {
-                        try
-                        {
-                            using var client = await testEnvironment2.ConnectClient();
-                            // Clear retained message.
-                            await client.PublishAsync(
-                                new MqttApplicationMessageBuilder().WithTopic("r" + i2)
-                                    .WithPayload(EmptyBuffer.Array)
-                                    .WithRetainFlag()
-                                    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
-                                    .Build());
+                        using var client = await testEnvironment2.ConnectClient();
+                        // Clear retained message.
+                        await client.PublishAsync(
+                            new MqttApplicationMessageBuilder().WithTopic("r" + i2)
+                                .WithPayload(EmptyBuffer.Array)
+                                .WithRetainFlag()
+                                .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                                .Build());
 
-                            // Set retained message.
-                            await client.PublishAsync(
-                                new MqttApplicationMessageBuilder().WithTopic("r" + i2)
-                                    .WithPayload("value")
-                                    .WithRetainFlag()
-                                    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
-                                    .Build());
+                        // Set retained message.
+                        await client.PublishAsync(
+                            new MqttApplicationMessageBuilder().WithTopic("r" + i2)
+                                .WithPayload("value")
+                                .WithRetainFlag()
+                                .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                                .Build());
 
-                            await client.DisconnectAsync();
-                        }
-                        catch (Exception exception)
-                        {
-                            testEnvironment2.TrackException(exception);
-                        }
-                    }));
+                        await client.DisconnectAsync();
+                    }
+                    catch (Exception exception)
+                    {
+                        testEnvironment2.TrackException(exception);
+                    }
+                }));
 
             await Task.Delay(10);
         }
@@ -244,7 +289,7 @@ public sealed class General_Tests : BaseTestClass
 
         var retainedMessages = await server.GetRetainedMessagesAsync();
 
-        Assert.AreEqual(clientCount, retainedMessages.Count);
+        Assert.HasCount(clientCount, retainedMessages);
 
         for (var i = 0; i < clientCount; i++)
         {
@@ -299,7 +344,7 @@ public sealed class General_Tests : BaseTestClass
         var isIntercepted = false;
         c2.ApplicationMessageReceivedAsync += e =>
         {
-            isIntercepted = string.Compare("extended", Encoding.UTF8.GetString(e.ApplicationMessage.Payload), StringComparison.Ordinal) == 0;
+            isIntercepted = string.Equals("extended", Encoding.UTF8.GetString(e.ApplicationMessage.Payload), StringComparison.Ordinal);
             return CompletedTask.Instance;
         };
 
@@ -346,7 +391,7 @@ public sealed class General_Tests : BaseTestClass
 
         client.ConnectedAsync += async _ =>
         {
-            await client.PublishStringAsync("Connected").ConfigureAwait(false);
+            await client.PublishStringAsync("Connected");
         };
 
         client.ApplicationMessageReceivedAsync += e =>
@@ -365,7 +410,7 @@ public sealed class General_Tests : BaseTestClass
 
         await Task.Delay(500);
 
-        Assert.AreEqual(0, receivedMessages.Count);
+        Assert.IsEmpty(receivedMessages);
     }
 
     [TestMethod]
@@ -407,7 +452,7 @@ public sealed class General_Tests : BaseTestClass
                     })
                 {
                     SenderClientId = "server"
-                }).ConfigureAwait(false);
+                });
         };
 
         string receivedTopic = null;
@@ -432,21 +477,21 @@ public sealed class General_Tests : BaseTestClass
     }
 
     [TestMethod]
-    public async Task Publish_At_Least_Once_0x01()
+    public Task Publish_At_Least_Once_0x01()
     {
-        await TestPublishAsync("A/B/C", MqttQualityOfServiceLevel.AtLeastOnce, "A/B/C", MqttQualityOfServiceLevel.AtLeastOnce, 1).ConfigureAwait(false);
+        return TestPublishAsync("A/B/C", MqttQualityOfServiceLevel.AtLeastOnce, "A/B/C", MqttQualityOfServiceLevel.AtLeastOnce, 1);
     }
 
     [TestMethod]
-    public async Task Publish_At_Most_Once_0x00()
+    public Task Publish_At_Most_Once_0x00()
     {
-        await TestPublishAsync("A/B/C", MqttQualityOfServiceLevel.AtMostOnce, "A/B/C", MqttQualityOfServiceLevel.AtMostOnce, 1).ConfigureAwait(false);
+        return TestPublishAsync("A/B/C", MqttQualityOfServiceLevel.AtMostOnce, "A/B/C", MqttQualityOfServiceLevel.AtMostOnce, 1);
     }
 
     [TestMethod]
-    public async Task Publish_Exactly_Once_0x02()
+    public Task Publish_Exactly_Once_0x02()
     {
-        await TestPublishAsync("A/B/C", MqttQualityOfServiceLevel.ExactlyOnce, "A/B/C", MqttQualityOfServiceLevel.ExactlyOnce, 1).ConfigureAwait(false);
+        return TestPublishAsync("A/B/C", MqttQualityOfServiceLevel.ExactlyOnce, "A/B/C", MqttQualityOfServiceLevel.ExactlyOnce, 1);
     }
 
     [TestMethod]
@@ -502,14 +547,14 @@ public sealed class General_Tests : BaseTestClass
             return CompletedTask.Instance;
         };
 
-        await c2.SubscribeAsync(new MqttTopicFilter { Topic = "a", QualityOfServiceLevel = MqttQualityOfServiceLevel.AtLeastOnce }).ConfigureAwait(false);
-        await c3.SubscribeAsync(new MqttTopicFilter { Topic = "a", QualityOfServiceLevel = MqttQualityOfServiceLevel.AtLeastOnce }).ConfigureAwait(false);
+        await c2.SubscribeAsync(new MqttTopicFilter { Topic = "a", QualityOfServiceLevel = MqttQualityOfServiceLevel.AtLeastOnce });
+        await c3.SubscribeAsync(new MqttTopicFilter { Topic = "a", QualityOfServiceLevel = MqttQualityOfServiceLevel.AtLeastOnce });
 
         var message = new MqttApplicationMessageBuilder().WithTopic("a").WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce).Build();
 
         for (var i = 0; i < 500; i++)
         {
-            await c1.PublishAsync(message).ConfigureAwait(false);
+            await c1.PublishAsync(message);
         }
 
         SpinWait.SpinUntil(() => receivedMessagesCount == 1000, TimeSpan.FromSeconds(20));
@@ -526,12 +571,12 @@ public sealed class General_Tests : BaseTestClass
         var clientOptions = new MqttClientOptionsBuilder();
         var c1 = await testEnvironment.ConnectClient(clientOptions);
         await Task.Delay(500);
-        Assert.AreEqual(1, (await server.GetClientsAsync()).Count);
+        Assert.HasCount(1, await server.GetClientsAsync());
 
         await c1.DisconnectAsync();
         await Task.Delay(500);
 
-        Assert.AreEqual(0, (await server.GetClientsAsync()).Count);
+        Assert.IsEmpty(await server.GetClientsAsync());
     }
 
     [TestMethod]
@@ -600,14 +645,14 @@ public sealed class General_Tests : BaseTestClass
 
         // nothing
 
-        Assert.AreEqual(false, c1.IsConnected);
+        Assert.IsFalse(c1.IsConnected);
         await c1.TryDisconnectAsync();
-        Assert.AreEqual(false, c1.IsConnected);
+        Assert.IsFalse(c1.IsConnected);
 
         await LongTestDelay();
 
         // d
-        Assert.AreEqual(true, c2.IsConnected);
+        Assert.IsTrue(c2.IsConnected);
         await c2.DisconnectAsync();
 
         await LongTestDelay();
@@ -768,7 +813,7 @@ public sealed class General_Tests : BaseTestClass
         server.ClientConnectedAsync += async e =>
         {
             // Every client will automatically subscribe to this topic.
-            await server.SubscribeAsync(e.ClientId, "topic1").ConfigureAwait(false);
+            await server.SubscribeAsync(e.ClientId, "topic1");
         };
 
         var client = await testEnvironment.ConnectClient();
@@ -788,11 +833,11 @@ public sealed class General_Tests : BaseTestClass
 
         await client.PublishStringAsync("Hello");
         await Task.Delay(100);
-        Assert.AreEqual(0, receivedMessages.Count);
+        Assert.IsEmpty(receivedMessages);
 
         await client.PublishStringAsync("topic1");
         await Task.Delay(100);
-        Assert.AreEqual(1, receivedMessages.Count);
+        Assert.HasCount(1, receivedMessages);
     }
 
     [TestMethod]
@@ -886,59 +931,6 @@ public sealed class General_Tests : BaseTestClass
         Assert.IsTrue(client.IsConnected);
     }
 
-    [TestMethod]
-    public async Task Disconnect_Client_with_Reason()
-    {
-        using var testEnvironment = CreateTestEnvironment();
-        var disconnectPacketReceived = false;
-
-        string testClientId = null;
-
-        await testEnvironment.StartServer();
-
-        testEnvironment.Server.ClientConnectedAsync += e =>
-        {
-            testClientId = e.ClientId;
-            return CompletedTask.Instance;
-        };
-
-        var client = testEnvironment.CreateClient();
-
-        client.InspectPacketAsync += e =>
-        {
-            if (e.Buffer.Length > 0)
-            {
-                if (e.Buffer[0] == (byte)MqttControlPacketType.Disconnect << 4)
-                {
-                    disconnectPacketReceived = true;
-                }
-            }
-            return CompletedTask.Instance;
-        };
-
-        await client.ConnectAsync(
-            new MqttClientOptionsBuilder().WithTcpServer("localhost", testEnvironment.ServerPort)
-                .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
-                .Build()
-        );
-
-        await LongTestDelay();
-
-        // Test client should be connected now
-
-        Assert.IsTrue(testClientId != null);
-
-        // Have the server disconnect the client with SessionTakenOver reason; no DISCONNECT should be sent to MQTT 3.1.1 clients
-
-        await testEnvironment.Server.DisconnectClientAsync(testClientId, MqttDisconnectReasonCode.SessionTakenOver);
-
-        await LongTestDelay();
-
-        // MQTT 3.1.1 client should not receive a disconnect packet
-
-        Assert.IsFalse(disconnectPacketReceived, "Disconnect packet received when none is expected");
-    }
-
     void ConnectionValidationHandler(ValidatingConnectionEventArgs eventArgs)
     {
         if (!_connected.TryAdd(eventArgs.ClientId, true))
@@ -968,12 +960,12 @@ public sealed class General_Tests : BaseTestClass
         await c2.PublishAsync(new MqttApplicationMessageBuilder().WithTopic(topic).WithPayload([]).WithQualityOfServiceLevel(qualityOfServiceLevel).Build());
         await Task.Delay(500);
 
-        await c2.DisconnectAsync().ConfigureAwait(false);
+        await c2.DisconnectAsync();
 
         await Task.Delay(500);
         await c1.UnsubscribeAsync(topicFilter);
         await Task.Delay(500);
 
-        Assert.AreEqual(expectedReceivedMessagesCount, c1MessageHandler.ReceivedEventArgs.Count);
+        Assert.HasCount(expectedReceivedMessagesCount, c1MessageHandler.ReceivedEventArgs);
     }
 }

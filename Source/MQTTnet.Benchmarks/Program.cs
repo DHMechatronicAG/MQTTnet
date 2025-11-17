@@ -2,9 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using BenchmarkDotNet.Running;
 
 namespace MQTTnet.Benchmarks;
@@ -92,7 +89,7 @@ public static class Program
             return;
         }
 
-        _selectedBenchmarkIndex = _benchmarks.FindIndex(b => b.Name.Equals(arguments[0]));
+        _selectedBenchmarkIndex = _benchmarks.FindIndex(b => b.Name.Equals(arguments[0], StringComparison.Ordinal));
 
         if (_selectedBenchmarkIndex < 0)
         {
